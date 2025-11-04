@@ -1,0 +1,80 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Docker
+*.log
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# ChromaDB
+chroma_db/
+*.db
+*.sqlite3
+
+# LangSmith
+langsmith_cache/
+
+# Tesseract temp files
+temp_ocr/
+*.tmp
+
+# Streamlit
+.streamlit/secrets.toml
+
+# MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Test outputs
+test_outputs/
+output_images/
