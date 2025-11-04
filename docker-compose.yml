@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # REST API Service
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: convergefi-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=true
+      - MAX_IMAGES=5
+      - OCR_LANG=eng
+      - MCP_SERVER_URL=http://mcp-server:8001
+    volumes:
+      - ./api:/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Streamlit UI Service
+  streamlit:
+    build:
+      context: ./streamlit-ui
+      dockerfile: Dockerfile
+    container_name: convergefi-streamlit
+    ports:
+      - "8501:8501"
+    environment:
+      - API_BASE_URL=http://api:8000
+    volumes:
+      - ./streamlit-ui:/app
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # MCP Server Service (will be implemented in Phase 4)
+  # mcp-server:
+  #   build:
+  #     context: ./mcp-server
+  #     dockerfile: Dockerfile
+  #   container_name: convergefi-mcp
+  #   ports:
+  #     - "8001:8001"
+  #   environment:
+  #     - CHROMA_PERSIST_DIR=/app/chroma_db
+  #     - EMBEDDING_MODEL=all-MiniLM-L6-v2
+  #   volumes:
+  #     - ./mcp-server:/app
+  #     - chroma_data:/app/chroma_db
+  #   restart: unless-stopped
+
+# volumes:
+#   chroma_data:
