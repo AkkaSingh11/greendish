@@ -95,15 +95,17 @@ ConvergeFi/
 ### Prerequisites
 
 1. **Python 3.11+**
-2. **Docker & Docker Compose**
+2. **uv** - Fast Python package installer
+   - Install: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+   - Or via pip: `pip install uv`
 3. **Tesseract OCR** - Install via:
    - macOS: `brew install tesseract`
    - Ubuntu: `sudo apt-get install tesseract-ocr`
    - Windows: Download from [GitHub](https://github.com/UB-Mannheim/tesseract/wiki)
-
-4. **API Keys** (optional but recommended):
-   - OpenAI API key (for LLM classification)
-   - LangSmith API key (for observability)
+4. **Docker & Docker Compose** (optional, for containerized deployment)
+5. **API Keys** (optional but recommended):
+   - OpenAI API key (for LLM classification - Phase 5+)
+   - LangSmith API key (for observability - Phase 7+)
 
 ### Installation
 
@@ -119,19 +121,26 @@ cp .env.example .env
 # Edit .env with your API keys
 ```
 
-3. **Install dependencies**
+3. **Install dependencies using uv**
 ```bash
 # For API service
 cd api
-pip install -r requirements.txt
+uv pip install -r pyproject.toml
 
-# For MCP server
+# For MCP server (Phase 4+)
 cd ../mcp-server
-pip install -r requirements.txt
+uv pip install -r pyproject.toml
 
 # For Streamlit UI
 cd ../streamlit-ui
-pip install -r requirements.txt
+uv pip install -r pyproject.toml
+```
+
+**Alternative: Use uv sync (recommended)**
+```bash
+# Each service directory
+cd api  # or streamlit-ui or mcp-server
+uv sync
 ```
 
 ### Running the Application

@@ -1,0 +1,22 @@
+[project]
+name = "convergefi-mcp-server"
+version = "0.1.0"
+description = "ConvergeFi MCP server for calculation and RAG services"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic",
+    "pydantic-settings",
+    "python-dotenv",
+    "chromadb",
+    "sentence-transformers",
+    "httpx",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest",
+    "pytest-cov",
+    "pytest-asyncio",
+]

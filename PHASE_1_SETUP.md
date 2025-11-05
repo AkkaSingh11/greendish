@@ -3,29 +3,40 @@
 ## Prerequisites
 
 1. **Python 3.11+** installed
-2. **Tesseract OCR** installed:
+2. **uv** - Fast Python package installer
+   - Install: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+   - Or: `brew install uv` (macOS) / `pip install uv`
+3. **Tesseract OCR** installed:
    - macOS: `brew install tesseract`
    - Ubuntu: `sudo apt-get install tesseract-ocr`
    - Windows: Download from [GitHub](https://github.com/UB-Mannheim/tesseract/wiki)
-3. **Docker** (optional, for containerized setup)
+4. **Docker** (optional, for containerized setup)
 
 ## Quick Start (Local Development)
 
-### 1. Setup Environment
+### 1. Setup Environment with uv
 
 ```bash
-# Create and activate virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
 # Install API dependencies
 cd api
-pip install -r requirements.txt
+uv sync  # Creates .venv and installs all dependencies
 cd ..
 
 # Install Streamlit UI dependencies
 cd streamlit-ui
-pip install -r requirements.txt
+uv sync  # Creates .venv and installs all dependencies
+cd ..
+```
+
+**Alternative: Use existing Python environment**
+```bash
+# Install dependencies into current environment
+cd api
+uv pip install -r pyproject.toml
+cd ..
+
+cd streamlit-ui
+uv pip install -r pyproject.toml
 cd ..
 ```
 

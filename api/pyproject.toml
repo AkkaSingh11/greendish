@@ -1,0 +1,29 @@
+[project]
+name = "convergefi-api"
+version = "0.1.0"
+description = "ConvergeFi REST API service for menu analysis"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "python-multipart",
+    "pillow",
+    "pytesseract",
+    "pydantic",
+    "pydantic-settings",
+    "python-dotenv",
+    "httpx",
+    "openai",
+    "langchain",
+    "langchain-openai",
+    "langsmith",
+    "chromadb",
+    "sentence-transformers",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest",
+    "pytest-cov",
+    "pytest-asyncio",
+]

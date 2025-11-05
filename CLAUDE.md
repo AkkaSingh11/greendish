@@ -46,6 +46,48 @@ from api.models import OCRResult
 
 This is because the API runs from within the `/api` directory. The same pattern applies to `mcp-server` and `streamlit-ui`.
 
+## Dependency Management
+
+This project uses **uv** for fast, reliable Python package management. All dependencies are defined in `pyproject.toml` files (one per service).
+
+### Installing uv
+
+```bash
+# Via curl (recommended)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Via pip
+pip install uv
+
+# Via Homebrew (macOS)
+brew install uv
+```
+
+### Installing Dependencies
+
+```bash
+# Method 1: Using uv pip install (for existing environments)
+cd api  # or streamlit-ui or mcp-server
+uv pip install -r pyproject.toml
+
+# Method 2: Using uv sync (recommended, creates/updates .venv)
+cd api  # or streamlit-ui or mcp-server
+uv sync
+```
+
+### Adding New Dependencies
+
+```bash
+# Edit pyproject.toml and add to dependencies array
+# Then run:
+uv sync
+
+# Or use uv to add directly:
+uv add package-name
+```
+
+**IMPORTANT**: Do NOT create `requirements.txt` files. All dependencies are managed via `pyproject.toml`.
+
 ## Development Commands
 
 ### Running Services Locally
@@ -53,19 +95,25 @@ This is because the API runs from within the `/api` directory. The same pattern 
 ```bash
 # API Service (from /api directory)
 cd api
+uv sync  # Install/update dependencies first
 python main.py
 # Runs on http://localhost:8000
 
 # Alternative: Using uvicorn directly with auto-reload
-uvicorn main:app --reload --port 8000
+uv run uvicorn main:app --reload --port 8000
 
 # Streamlit UI (from /streamlit-ui directory)
 cd streamlit-ui
+uv sync  # Install/update dependencies first
 streamlit run app.py
 # Runs on http://localhost:8501
 
+# Or using uv run:
+uv run streamlit run app.py
+
 # MCP Server (from /mcp-server directory) - Phase 4+
 cd mcp-server
+uv sync  # Install/update dependencies first
 python server.py
 # Runs on http://localhost:8001
 ```
