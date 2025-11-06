@@ -8,6 +8,11 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8005")
 API_HEALTH_ENDPOINT = f"{API_BASE_URL}/health"
 API_EXTRACT_TEXT_ENDPOINT = f"{API_BASE_URL}/api/v1/extract-text"
 API_PROCESS_MENU_ENDPOINT = f"{API_BASE_URL}/api/v1/process-menu"
+API_MCP_TOOLS_ENDPOINT = f"{API_BASE_URL}/api/v1/mcp/tools"
+
+# MCP Server Configuration
+MCP_BASE_URL = os.getenv("MCP_BASE_URL", "http://localhost:8001")
+MCP_HEALTH_ENDPOINT = f"{MCP_BASE_URL}/health"
 
 # UI Configuration
 MAX_IMAGES = 5

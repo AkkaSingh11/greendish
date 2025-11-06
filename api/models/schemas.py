@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 
@@ -71,6 +71,7 @@ class ProcessMenuResponse(BaseModel):
     processing_time_ms: float
     langsmith_trace_url: Optional[str] = None
     calculation_summary: Optional["CalculationSummary"] = None
+    mode: str = "non-ai"
 
 
 class ErrorResponse(BaseModel):
@@ -90,6 +91,16 @@ class CalculationSummary(BaseModel):
     reasoning: str
     priced_dish_count: Optional[int] = None
     missing_price_count: Optional[int] = None
+
+
+class MCPToolInfo(BaseModel):
+    """Metadata describing an MCP tool exposed by the calculator service."""
+
+    name: str
+    title: Optional[str] = None
+    description: Optional[str] = None
+    input_schema: Optional[Dict[str, Any]] = None
+    output_schema: Optional[Dict[str, Any]] = None
 
 
 ProcessMenuResponse.model_rebuild()

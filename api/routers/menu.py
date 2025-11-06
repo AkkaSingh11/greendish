@@ -1,8 +1,7 @@
-from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi import APIRouter, File, UploadFile, HTTPException, Query, status
 from typing import List, Optional
 import logging
 import uuid
-from datetime import datetime
 
 from models import (
     OCRResult,
@@ -12,6 +11,7 @@ from models import (
     ParsedDish,
     Dish,
     CalculationSummary,
+    MCPToolInfo,
 )
 from services import (
     OCRService,
@@ -26,6 +26,12 @@ from config import settings
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["menu"])
+
+SUPPORTED_MODES = {"non-ai", "ai"}
+DEFAULT_MODE = "non-ai"
+AI_MODE_PENDING_MESSAGE = (
+    "AI processing mode is not available yet. Select mode=non-ai until Phase 6 is completed."
+)
 
 # Initialize services
 ocr_service = OCRService()
@@ -111,27 +117,53 @@ async def extract_text(
 @router.post(
     "/process-menu",
     response_model=ProcessMenuResponse,
-    summary="Process menu images and parse dishes (Phase 2: OCR + Parsing)",
+    summary="Process menu images with OCR and keyword-based vegetarian classification",
 )
 async def process_menu(
-    files: List[UploadFile] = File(..., description="Menu images (1-5 files)")
+    files: List[UploadFile] = File(..., description="Menu images (1-5 files)"),
+    mode: str = Query(
+        DEFAULT_MODE,
+        description="Processing mode. Use 'non-ai' for the deterministic Phase 5 pipeline. "
+        "'ai' will be available once Phase 6 is complete.",
+    ),
 ):
     """
-    Process menu images to extract dishes, classify vegetarian options, and calculate totals.
+    Process menu images to extract dishes, classify vegetarian options, and calculate totals
+    using the selected pipeline mode.
 
-    - Phase 1: OCR text extraction ✅
-    - Phase 2: Parse dishes with names and prices ✅
-    - Phase 3: Keyword-based vegetarian classification ✅
-    - Phase 4: Price calculation via MCP server ✅
-
-    Returns OCR results, parsed dishes, vegetarian breakdown, and total price.
+    - non-ai: deterministic Phase 5 pipeline (OCR → Parse → Keyword Match → MCP totals)
+    - ai: (coming soon) LangGraph + LLM pipeline, not yet implemented
     """
     import time
+
+    normalized_mode = mode.strip().lower()
+    if normalized_mode not in SUPPORTED_MODES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported processing mode '{mode}'. Supported modes: {', '.join(sorted(SUPPORTED_MODES))}.",
+        )
+
+    if normalized_mode == "ai":
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail=AI_MODE_PENDING_MESSAGE,
+        )
+
+    if not settings.keyword_mode_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Keyword-based processing is disabled. Enable keyword_mode_enabled to use the non-ai pipeline.",
+        )
 
     start_time = time.time()
     request_id = str(uuid.uuid4())
 
-    logger.info(f"Processing menu request {request_id} with {len(files)} images")
+    logger.info(
+        "Processing menu request %s with %d image(s) using mode=%s",
+        request_id,
+        len(files),
+        normalized_mode,
+    )
 
     # Extract text from images
     ocr_results_list = await extract_text(files)
@@ -257,4 +289,30 @@ async def process_menu(
         processing_time_ms=processing_time,
         langsmith_trace_url=None,  # Will be added in Phase 7
         calculation_summary=calculation_summary,
+        mode=normalized_mode,
     )
+
+
+@router.get(
+    "/mcp/tools",
+    response_model=List[MCPToolInfo],
+    summary="List available MCP tools exposed by the calculator service",
+)
+async def get_mcp_tools() -> List[MCPToolInfo]:
+    """Return the set of MCP tools currently registered with the server."""
+    if not mcp_client:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="MCP client is not configured. Check MCP server settings.",
+        )
+
+    try:
+        tools = await mcp_client.list_tools()
+    except Exception as exc:  # pragma: no cover - network failures
+        logger.error("Failed to list MCP tools: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to retrieve MCP tool metadata.",
+        )
+
+    return [MCPToolInfo(**tool) for tool in tools]

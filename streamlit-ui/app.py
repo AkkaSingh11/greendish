@@ -42,6 +42,12 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+MODE_OPTIONS = {
+    "🥗 Non-AI (Keyword Pipeline)": "non-ai",
+    "🤖 AI Agent (Coming Soon)": "ai",
+}
+READY_MODE = "non-ai"
+
 
 def check_api_health() -> dict:
     """Check API health status."""
@@ -52,6 +58,31 @@ def check_api_health() -> dict:
         return {"status": "unhealthy", "error": f"Status code: {response.status_code}"}
     except Exception as e:
         return {"status": "unavailable", "error": str(e)}
+
+
+def check_mcp_health() -> dict:
+    """Check MCP server health status."""
+    try:
+        response = requests.get(config.MCP_HEALTH_ENDPOINT, timeout=5)
+        if response.status_code == 200:
+            return {"status": "healthy", "data": response.json()}
+        return {"status": "unhealthy", "error": f"Status code: {response.status_code}"}
+    except Exception as e:
+        return {"status": "unavailable", "error": str(e)}
+
+
+def fetch_mcp_tools() -> dict:
+    """Fetch registered MCP tools from the API service."""
+    try:
+        response = requests.get(config.API_MCP_TOOLS_ENDPOINT, timeout=5)
+        if response.status_code == 200:
+            return {"status": "ok", "tools": response.json()}
+        return {
+            "status": "error",
+            "error": f"Status code: {response.status_code}",
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
 
 
 def main():
@@ -79,29 +110,66 @@ def main():
             st.error(f"Error: {health.get('error', 'Unknown error')}")
             st.warning("Please start the API server:\n```bash\ncd api\npython main.py\n```")
 
+        # MCP Server Health
+        mcp_health = check_mcp_health()
+        if mcp_health["status"] == "healthy":
+            st.markdown('<p class="status-healthy">✅ MCP Server: Healthy</p>', unsafe_allow_html=True)
+            mcp_data = mcp_health.get("data", {})
+            st.caption(f"Service: {mcp_data.get('service', 'calculator')}")
+        elif mcp_health["status"] == "unhealthy":
+            st.markdown('<p class="status-unhealthy">❌ MCP Server: Unhealthy</p>', unsafe_allow_html=True)
+            st.error(f"Error: {mcp_health.get('error', 'Unknown error')}")
+        else:
+            st.markdown('<p class="status-unhealthy">⚠️ MCP Server: Unavailable</p>', unsafe_allow_html=True)
+            st.error(f"Error: {mcp_health.get('error', 'Unknown error')}")
+
+        with st.expander("🔧 View MCP Tools"):
+            if mcp_health["status"] != "healthy":
+                st.info("Start the MCP server to inspect available tools.")
+            else:
+                tools_response = fetch_mcp_tools()
+                if tools_response["status"] == "ok":
+                    tools = tools_response.get("tools", [])
+                    if not tools:
+                        st.warning("No MCP tools are currently registered.")
+                    else:
+                        for tool in tools:
+                            st.write(f"**{tool.get('title') or tool.get('name')}**")
+                            st.caption(tool.get("description") or "No description provided.")
+                            if tool.get("input_schema"):
+                                st.caption("Input schema")
+                                st.json(tool["input_schema"])
+                            if tool.get("output_schema"):
+                                st.caption("Output schema")
+                                st.json(tool["output_schema"])
+                            st.divider()
+                else:
+                    st.error(f"Unable to fetch MCP tools: {tools_response.get('error')}")
+
         st.divider()
 
         st.header("ℹ️ About")
         st.info(
             """
-            **Current Status: Phase 4 Complete**
+            **Current Progress: Phase 5 Complete**
 
             ✅ **Phase 1:** OCR text extraction  
             ✅ **Phase 2:** Text parsing & dish extraction  
             ✅ **Phase 3:** Keyword-based vegetarian classification  
-            ✅ **Phase 4:** MCP calculator integration
+            ✅ **Phase 4:** MCP calculator integration  
+            ✅ **Phase 5:** Non-AI pipeline exposed end-to-end
 
-            Current capabilities:
+            **Available Today (Non-AI pipeline):**
             - Upload 1-5 menu images
             - Extract text using Tesseract OCR
             - Parse dishes with names and prices
-            - Classify vegetarian dishes with confidence scores
+            - Classify vegetarian dishes with deterministic keywords
             - Aggregate vegetarian totals via MCP calculator
 
-            **Coming Soon:**
-            - Phase 5: LLM classification
-            - Phase 6: RAG for confidence scoring
+            **Coming Soon (AI pipeline):**
+            - Phase 6: OpenRouter LLM classification
             - Phase 7: LangGraph agent orchestration
+            - Phase 8: RAG-backed confidence boosting
             """
         )
 
@@ -146,7 +214,25 @@ def main():
         st.divider()
 
         # Process menu button
-        if st.button("🧠 Process Menu", type="primary", use_container_width=True):
+        st.subheader("⚙️ Processing Mode")
+        mode_label = st.radio(
+            "Select processing pipeline",
+            list(MODE_OPTIONS.keys()),
+            index=0,
+            help="Phase 5 provides the keyword-based non-ai pipeline. The AI agent mode will arrive in Phase 6.",
+        )
+        selected_mode = MODE_OPTIONS[mode_label]
+        ai_mode_selected = selected_mode != READY_MODE
+
+        if ai_mode_selected:
+            st.info("🤖 AI agent mode is coming in Phase 6. Switch back to the non-AI pipeline to process menus.")
+
+        if st.button(
+            "🧠 Process Menu",
+            type="primary",
+            use_container_width=True,
+            disabled=ai_mode_selected,
+        ):
             if health["status"] != "healthy":
                 st.error("❌ API is not available. Please start the API server first.")
                 return
@@ -166,6 +252,7 @@ def main():
                     response = requests.post(
                         config.API_PROCESS_MENU_ENDPOINT,
                         files=files,
+                        params={"mode": selected_mode},
                         timeout=60,
                     )
                     elapsed_time = (time.time() - start_time) * 1000
@@ -174,6 +261,8 @@ def main():
                         results = response.json()
 
                         st.success(f"✅ Menu processed in {elapsed_time:.2f}ms")
+                        result_mode = results.get("mode", READY_MODE)
+                        st.caption(f"Processing mode: {result_mode}")
 
                         # Display results
                         st.header("📄 OCR Results")

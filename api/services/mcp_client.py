@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from mcp import ClientSession, types
 from mcp.client.streamable_http import streamablehttp_client
@@ -101,6 +101,30 @@ class MCPClient:
             uncertain_dishes=[],
             reasoning=reasoning,
         )
+
+    async def list_tools(self) -> List[Dict[str, Any]]:
+        """Return metadata for tools exposed by the MCP server."""
+        async with streamablehttp_client(self.endpoint, timeout=self.timeout) as (
+            read_stream,
+            write_stream,
+            _,
+        ):
+            async with ClientSession(read_stream, write_stream) as session:
+                await session.initialize()
+                result = await session.list_tools()
+
+        tools: List[Dict[str, Any]] = []
+        for tool in getattr(result, "tools", []):
+            tools.append(
+                {
+                    "name": tool.name,
+                    "title": getattr(tool, "title", None),
+                    "description": getattr(tool, "description", None),
+                    "input_schema": getattr(tool, "inputSchema", None),
+                    "output_schema": getattr(tool, "outputSchema", None),
+                }
+            )
+        return tools
 
 
 def get_mcp_client() -> Optional[MCPClient]:

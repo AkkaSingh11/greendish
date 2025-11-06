@@ -8,6 +8,7 @@ from .schemas import (
     ParsedDish,
     ParsedMenu,
     ProcessMenuResponse,
+    MCPToolInfo,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "ProcessMenuResponse",
     "ErrorResponse",
     "CalculationSummary",
+    "MCPToolInfo",
 ]
