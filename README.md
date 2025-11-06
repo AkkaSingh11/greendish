@@ -158,7 +158,7 @@ python server.py
 
 # Terminal 2: Start API Service
 cd api
-uvicorn main:app --reload --port 8000
+uvicorn main:app --reload --port 8005
 
 # Terminal 3: Start Streamlit UI
 cd streamlit-ui
@@ -167,10 +167,10 @@ streamlit run app.py
 
 ### Access Points
 
-- **API Documentation**: http://localhost:8000/docs
+- **API Documentation**: http://localhost:8005/docs
 - **Streamlit UI**: http://localhost:8501
 - **MCP Server**: http://localhost:8001
-- **Health Check**: http://localhost:8000/health
+- **Health Check**: http://localhost:8005/health
 
 ## Usage
 
@@ -181,7 +181,7 @@ streamlit run app.py
 - Returns vegetarian dishes with total price
 
 ```bash
-curl -X POST "http://localhost:8000/process-menu" \
+curl -X POST "http://localhost:8005/process-menu" \
   -F "files=@menu1.jpeg" \
   -F "files=@menu2.png"
 ```

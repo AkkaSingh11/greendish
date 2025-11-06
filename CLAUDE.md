@@ -97,10 +97,10 @@ uv add package-name
 cd api
 uv sync  # Install/update dependencies first
 python main.py
-# Runs on http://localhost:8000
+# Runs on http://localhost:8005
 
 # Alternative: Using uvicorn directly with auto-reload
-uv run uvicorn main:app --reload --port 8000
+uv run uvicorn main:app --reload --port 8005
 
 # Streamlit UI (from /streamlit-ui directory)
 cd streamlit-ui
@@ -291,7 +291,7 @@ ChromaDB setup:
 
 1. **Import errors in API service**: Use relative imports, not `from api.module`
 2. **Tesseract not found**: Ensure Tesseract is installed and in PATH
-3. **Port conflicts**: Default ports are 8000 (API), 8001 (MCP), 8501 (Streamlit)
+3. **Port conflicts**: Default ports are 8005 (API), 8001 (MCP), 8501 (Streamlit)
 4. **File upload size**: Default max is 10MB per image, configurable via `MAX_FILE_SIZE_MB`
 5. **Working directory**: FastAPI app must run from `/api` directory
 

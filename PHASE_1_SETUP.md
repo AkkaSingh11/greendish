@@ -60,9 +60,9 @@ python main.py
 ```
 
 API will be available at:
-- **API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/health
+- **API**: http://localhost:8005
+- **API Docs**: http://localhost:8005/docs
+- **Health Check**: http://localhost:8005/health
 
 ### 4. Start the Streamlit UI
 
@@ -96,7 +96,7 @@ docker-compose down
 ```
 
 Access:
-- API: http://localhost:8000
+- API: http://localhost:8005
 - Streamlit UI: http://localhost:8501
 
 ## Testing the API Directly
@@ -105,10 +105,10 @@ Access:
 
 ```bash
 # Health check
-curl http://localhost:8000/health
+curl http://localhost:8005/health
 
 # Extract text from menu
-curl -X POST "http://localhost:8000/api/v1/extract-text" \
+curl -X POST "http://localhost:8005/api/v1/extract-text" \
   -F "files=@menu1.jpeg" \
   -F "files=@menu2.png"
 ```
@@ -125,7 +125,7 @@ with open('menu1.jpeg', 'rb') as f1, open('menu2.png', 'rb') as f2:
         ('files', ('menu2.png', f2, 'image/png'))
     ]
     response = requests.post(
-        'http://localhost:8000/api/v1/extract-text',
+        'http://localhost:8005/api/v1/extract-text',
         files=files
     )
     print(response.json())
@@ -212,11 +212,11 @@ pip install -r requirements.txt
 
 ### API Not Accessible
 
-**Error:** Connection refused to http://localhost:8000
+**Error:** Connection refused to http://localhost:8005
 
 **Solution:**
 1. Check if API is running: `ps aux | grep uvicorn`
-2. Check for port conflicts: `lsof -i :8000`
+2. Check for port conflicts: `lsof -i :8005`
 3. Restart API server
 
 ### Docker Issues

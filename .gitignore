@@ -79,3 +79,5 @@ temp_ocr/
 # Test outputs
 test_outputs/
 output_images/
+
+example_code

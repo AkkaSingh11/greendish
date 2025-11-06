@@ -196,8 +196,8 @@ docker-compose up --build
 ```
 
 Access:
-- API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
+- API: http://localhost:8005
+- API Docs: http://localhost:8005/docs
 - Streamlit UI: http://localhost:8501
 
 ---
