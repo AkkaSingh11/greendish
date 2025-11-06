@@ -269,10 +269,11 @@ Each page should be self-contained and demonstrate the capabilities added in tha
 
 ## Testing Strategy
 
-Sample menu images are provided in the project root:
+Sample menu images are provided in `ocr_test_images/`:
 - `menu1.jpeg` - Applebee's menu (complex, multi-column)
 - `menu2.png` - Simple menu with prices
 - `menu3.webp` - Cafe menu with descriptions
+- `image_4.webp`, `image_6.png` - Additional menus for parser regression tests
 
 Use `test_ocr.py` for quick validation that OCR is working. Full pytest suite will be added in Phase 9.
 

@@ -78,10 +78,10 @@ Streamlit UI will be available at:
 ### 5. Test with Sample Menus
 
 1. Open http://localhost:8501 in your browser
-2. Upload the sample menu images:
-   - `menu1.jpeg`
-   - `menu2.png`
-   - `menu3.webp`
+2. Upload the sample menu images located in `ocr_test_images/`:
+   - `ocr_test_images/menu1.jpeg`
+   - `ocr_test_images/menu2.png`
+   - `ocr_test_images/menu3.webp`
 3. Click "Extract Text"
 4. Review the OCR results
 
@@ -109,8 +109,8 @@ curl http://localhost:8005/health
 
 # Extract text from menu
 curl -X POST "http://localhost:8005/api/v1/extract-text" \
-  -F "files=@menu1.jpeg" \
-  -F "files=@menu2.png"
+  -F "files=@ocr_test_images/menu1.jpeg" \
+  -F "files=@ocr_test_images/menu2.png"
 ```
 
 ### Using Python
@@ -119,7 +119,7 @@ curl -X POST "http://localhost:8005/api/v1/extract-text" \
 import requests
 
 # Upload images
-with open('menu1.jpeg', 'rb') as f1, open('menu2.png', 'rb') as f2:
+with open('ocr_test_images/menu1.jpeg', 'rb') as f1, open('ocr_test_images/menu2.png', 'rb') as f2:
     files = [
         ('files', ('menu1.jpeg', f1, 'image/jpeg')),
         ('files', ('menu2.png', f2, 'image/png'))
@@ -178,9 +178,12 @@ ConvergeFi/
 │   ├── config.py               # UI config
 │   ├── requirements.txt
 │   └── Dockerfile
-├── menu1.jpeg                  # Sample menu 1
-├── menu2.png                   # Sample menu 2
-├── menu3.webp                  # Sample menu 3
+├── ocr_test_images/
+│   ├── menu1.jpeg              # Sample menu 1
+│   ├── menu2.png               # Sample menu 2
+│   ├── menu3.webp              # Sample menu 3
+│   ├── image_4.webp            # Additional test menu
+│   └── image_6.png             # Additional test menu
 └── docker-compose.yml
 ```
 

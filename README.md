@@ -182,8 +182,8 @@ streamlit run app.py
 
 ```bash
 curl -X POST "http://localhost:8005/process-menu" \
-  -F "files=@menu1.jpeg" \
-  -F "files=@menu2.png"
+  -F "files=@ocr_test_images/menu1.jpeg" \
+  -F "files=@ocr_test_images/menu2.png"
 ```
 
 ### Streamlit UI

@@ -1,6 +1,7 @@
-import re
 import logging
-from typing import List, Tuple, Optional
+import re
+from collections import deque
+from typing import List, Optional
 
 from models.schemas import Dish
 
@@ -75,16 +76,42 @@ class ParserService:
         Returns:
             List of Dish objects
         """
-        dishes = []
-        current_dish_name = None
-        current_raw_lines = []
+        dishes: List[Dish] = []
+        pending_dishes = deque()
 
-        for i, line in enumerate(lines):
-            line = line.strip()
+        for i, raw_line in enumerate(lines):
+            line = raw_line.strip()
             if not line:
                 continue
 
-            current_raw_lines.append(line)
+            # Handle lines containing multiple inline prices (e.g., two columns merged)
+            price_matches = [
+                match for match in self.price_regex.finditer(line)
+                if self._is_valid_price_token(match.group(0))
+            ]
+            if len(price_matches) > 1:
+                segment_start = 0
+                for match in price_matches:
+                    segment_text = line[segment_start:match.start()]
+                    segment_text = self._clean_candidate_text(segment_text)
+                    price_value = self._extract_price(match.group(0))
+
+                    if not segment_text or price_value is None:
+                        segment_start = match.end()
+                        continue
+
+                    dish_name = self._extract_dish_name(segment_text, check_price=False)
+                    if dish_name:
+                        raw_segment = f"{segment_text.strip()} {match.group(0)}".strip()
+                        dishes.append(Dish(
+                            name=dish_name,
+                            price=price_value,
+                            raw_text=raw_segment,
+                            confidence=self._calculate_confidence(dish_name, price_value, [raw_segment])
+                        ))
+                    segment_start = match.end()
+                # Skip further processing since we've handled this line
+                continue
 
             # Check if line contains a price
             price = self._extract_price(line)
@@ -94,47 +121,48 @@ class ParserService:
 
             if dish_name and price:
                 # Complete dish on single line
+                raw_lines = [line]
                 dishes.append(Dish(
                     name=dish_name,
                     price=price,
-                    raw_text=' '.join(current_raw_lines),
-                    confidence=self._calculate_confidence(dish_name, price, current_raw_lines)
+                    raw_text=' '.join(raw_lines),
+                    confidence=self._calculate_confidence(dish_name, price, raw_lines)
                 ))
-                current_dish_name = None
-                current_raw_lines = []
+                continue
 
-            elif dish_name and not price:
-                # Dish name without price - might be continued on next line
-                current_dish_name = dish_name
+            if dish_name and not price:
+                # Dish name without price - queue it until we see a price
+                pending_dishes.append({
+                    'name': dish_name,
+                    'raw_lines': [self._clean_candidate_text(line)],
+                })
+                continue
 
-            elif not dish_name and price and current_dish_name:
-                # Price line following a dish name
+            if price and pending_dishes:
+                # Assign price to the oldest pending dish
+                dish_info = pending_dishes.popleft()
+                raw_lines = dish_info['raw_lines'] + [self._clean_candidate_text(line)]
                 dishes.append(Dish(
-                    name=current_dish_name,
+                    name=dish_info['name'],
                     price=price,
-                    raw_text=' '.join(current_raw_lines),
-                    confidence=self._calculate_confidence(current_dish_name, price, current_raw_lines)
+                    raw_text=' '.join(raw_lines),
+                    confidence=self._calculate_confidence(dish_info['name'], price, raw_lines)
                 ))
-                current_dish_name = None
-                current_raw_lines = []
+                continue
 
-            elif not dish_name and not price and current_dish_name:
-                # Description line - keep accumulating
-                pass
+            if not dish_name and not price and pending_dishes:
+                # Description line - attach to the most recent pending dish
+                pending_dishes[-1]['raw_lines'].append(self._clean_candidate_text(line))
 
-            else:
-                # Reset if we can't identify anything useful
-                if len(current_raw_lines) > 3:
-                    current_dish_name = None
-                    current_raw_lines = []
-
-        # Handle last accumulated dish (no price)
-        if current_dish_name and current_raw_lines:
+        # Flush any pending dishes without prices
+        while pending_dishes:
+            dish_info = pending_dishes.popleft()
+            raw_lines = dish_info['raw_lines']
             dishes.append(Dish(
-                name=current_dish_name,
+                name=dish_info['name'],
                 price=None,
-                raw_text=' '.join(current_raw_lines),
-                confidence=self._calculate_confidence(current_dish_name, None, current_raw_lines)
+                raw_text=' '.join(raw_lines),
+                confidence=self._calculate_confidence(dish_info['name'], None, raw_lines)
             ))
 
         return dishes
@@ -184,6 +212,30 @@ class ParserService:
 
         return dishes
 
+    def _clean_candidate_text(self, text: str) -> str:
+        """Normalize candidate text segments by stripping filler characters."""
+        if not text:
+            return ''
+
+        text = text.replace('…', ' ')
+        text = re.sub(r'[\u2022·•]+', ' ', text)
+        text = re.sub(r'\.{2,}', ' ', text)
+        text = re.sub(r'[_=]+', ' ', text)
+        text = re.sub(r'\s+', ' ', text)
+        return text.strip()
+
+    def _is_valid_price_token(self, token: str) -> bool:
+        """Check if the matched token is likely representing a price."""
+        if not token:
+            return False
+
+        token = token.strip()
+        if '$' in token:
+            return True
+
+        # Require decimal point to avoid calorie counts like "990"
+        return bool(re.search(r'\d+\.\d{2}', token))
+
     def _extract_dish_name(self, line: str, check_price: bool = True) -> Optional[str]:
         """
         Extract dish name from a line of text.
@@ -197,6 +249,8 @@ class ParserService:
         """
         if not line:
             return None
+
+        line = self._clean_candidate_text(line)
 
         # Remove leading numbers, bullets, dashes
         line = re.sub(r'^[\s\d\.\-\*\)]+', '', line).strip()
@@ -221,13 +275,17 @@ class ParserService:
         line = re.sub(r'[\.,:;]+$', '', line).strip()
 
         # Check if it looks like a valid dish name (not headers like "APPETIZERS", "MENU", etc.)
-        header_keywords = [
-            'appetizer', 'entree', 'dessert', 'beverage', 'drink',
-            'menu', 'breakfast', 'lunch', 'dinner', 'side', 'page',
-            'continued', 'special', 'daily'
-        ]
-
-        if any(keyword in line.lower() and len(line.split()) <= 2 for keyword in header_keywords):
+        header_keywords = {
+            'appetizer', 'appetizers', 'entree', 'entrees', 'dessert', 'desserts',
+            'beverage', 'beverages', 'drink', 'drinks', 'menu', 'breakfast',
+            'lunch', 'dinner', 'side', 'sides', 'page', 'continued', 'special',
+            'specials', 'daily', 'salads', 'restaurant', 'starters', 'starter',
+            'lunch specials'
+        }
+        normalized = re.sub(r'[^a-z\s]', '', line.lower()).strip()
+        if 'www' in normalized:
+            return None
+        if normalized in header_keywords and len(normalized.split()) <= 2:
             return None
 
         return line if len(line) >= 3 else None
