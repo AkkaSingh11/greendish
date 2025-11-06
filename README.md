@@ -6,11 +6,11 @@ A microservices-based system that processes restaurant menu photos to identify a
 
 This system combines:
 - **OCR (Tesseract)** for text extraction from menu images
-- **LLM Classification** (GPT-4o-mini/Claude) for intelligent vegetarian dish detection
+- **LLM Classification** via OpenRouter (primary `deepseek/deepseek-chat-v3.1`, fallback `openai/gpt-oss-120b`)
 - **RAG (Retrieval-Augmented Generation)** with ChromaDB for confidence scoring
-- **MCP Server** for calculation logic
-- **LangSmith** for observability and tracing
-- **Streamlit UI** for testing and demonstration
+- **MCP Server** for deterministic calculation logic
+- **LangSmith** for observability and tracing (Phase 10)
+- **Streamlit UI** for testing, including a dedicated OpenRouter chat playground
 
 ## System Architecture
 
@@ -79,7 +79,7 @@ ConvergeFi/
 - **Pillow (PIL)** - Image processing
 
 ### AI/ML
-- **OpenAI API** - GPT-4o-mini for classification
+- **OpenRouter API** - unified access to `deepseek/deepseek-chat-v3.1` (primary) and `openai/gpt-oss-120b` (fallback)
 - **ChromaDB** - Vector database
 - **sentence-transformers** - Embeddings (all-MiniLM-L6-v2)
 
@@ -104,8 +104,8 @@ ConvergeFi/
    - Windows: Download from [GitHub](https://github.com/UB-Mannheim/tesseract/wiki)
 4. **Docker & Docker Compose** (optional, for containerized deployment)
 5. **API Keys** (optional but recommended):
-   - OpenAI API key (for LLM classification - Phase 5+)
-   - LangSmith API key (for observability - Phase 7+)
+   - OpenRouter API key (for LLM classification - Phase 6+)
+   - LangSmith API key (for observability - Phase 10)
 
 ### Installation
 
@@ -131,7 +131,7 @@ uv pip install -r pyproject.toml
 cd ../mcp-server
 uv pip install -r pyproject.toml
 
-# For Streamlit UI
+# For Streamlit UI (includes OpenRouter chat playground)
 cd ../streamlit-ui
 uv pip install -r pyproject.toml
 ```
@@ -141,6 +141,19 @@ uv pip install -r pyproject.toml
 # Each service directory
 cd api  # or streamlit-ui or mcp-server
 uv sync
+```
+
+4. **Configure LLM settings**
+
+Update the root `.env` with your OpenRouter credentials and model preferences:
+
+```env
+OPENROUTER_API_KEY=your_openrouter_api_key
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+OPENROUTER_PRIMARY_MODEL=deepseek/deepseek-chat-v3.1
+OPENROUTER_FALLBACK_MODEL=openai/gpt-oss-120b
+OPENROUTER_REQUEST_TIMEOUT=30
+OPENROUTER_APP_NAME=ConvergeFi-MenuAnalyzer
 ```
 
 ### Running the Application
@@ -169,6 +182,7 @@ streamlit run app.py
 
 - **API Documentation**: http://localhost:8005/docs
 - **Streamlit UI**: http://localhost:8501
+- **OpenRouter Chat Playground**: within the Streamlit UI (sidebar → "💬 OpenRouter Chat Playground")
 - **MCP Server**: http://localhost:8001
 - **Health Check**: http://localhost:8005/health
 
@@ -194,6 +208,7 @@ curl -X POST "http://localhost:8005/process-menu" \
 4. See classified vegetarian dishes
 5. Review confidence scores and reasoning
 6. Get total price calculation
+7. Switch to the "💬 OpenRouter Chat Playground" page to test and compare LLM responses
 
 ## Features
 

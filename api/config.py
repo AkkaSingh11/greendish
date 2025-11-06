@@ -32,6 +32,14 @@ class Settings(BaseSettings):
     max_tokens: int = 500
     temperature: float = 0.3
 
+    # OpenRouter Settings
+    openrouter_api_key: Optional[str] = None
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_primary_model: str = "deepseek/deepseek-chat-v3.1"
+    openrouter_fallback_model: Optional[str] = "openai/gpt-oss-120b"
+    openrouter_request_timeout: int = 30
+    openrouter_app_name: str = "ConvergeFi-Menu Analyzer"
+
     # Classification Settings
     confidence_threshold: float = 0.7
     use_keyword_fallback: bool = True

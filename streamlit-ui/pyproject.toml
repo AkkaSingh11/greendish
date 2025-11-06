@@ -10,4 +10,6 @@ dependencies = [
     "pandas",
     "plotly",
     "python-dotenv",
+    "pydantic-settings>=2.11.0",
+    "httpx>=0.28.1",
 ]

@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ConvergeFi is a microservices-based Restaurant Menu Vegetarian Dish Analyzer that processes menu photos to identify and calculate total prices of vegetarian dishes. The system uses:
 - **OCR** (Tesseract) for text extraction
 - **Structured parsing** that emits canonical `{name, price, raw_text}` JSON for each dish
-- **LLM classification** via OpenRouter (primary `deepseek/deepseek-chat-v3.1`, fallback `openai/gpt-oss-120b`)
+- **LLM classification** via OpenRouter (primary `deepseek/deepseek-chat-v3.1`, fallback `openai/gpt-oss-120b`), surfaced through the shared `api.llm.OpenRouterClient`
 - **LangGraph menu-processor agent** to orchestrate dish classification, RAG fallback, and MCP tool usage
 - **RAG** (ChromaDB + sentence-transformers) for confidence bolstering when classification is uncertain
 - **MCP (Model Context Protocol)** server for deterministic price calculation logic
@@ -28,6 +28,7 @@ The system is split into three microservices that communicate over HTTP:
 
 3. **Streamlit UI** (`/streamlit-ui`) - Testing interface
    - Multi-page app for testing each phase
+   - Includes an “💬 OpenRouter Chat Playground” page to sanity-check LLM prompts against primary/fallback models
    - Mirrors API outputs, including the structured `parsed_menu` JSON for verification
 
 ## Import Structure
@@ -45,7 +46,7 @@ from api.config import settings
 from api.models import OCRResult
 ```
 
-This is because the API runs from within the `/api` directory. The same pattern applies to `mcp-server` and `streamlit-ui`.
+This is because the API runs from within the `/api` directory. The same pattern applies to `mcp-server` and `streamlit-ui`. Subpackages should use explicit relative imports (`from ..config import settings`) so they remain importable from outside the service (e.g., the Streamlit chat page).
 
 ## Dependency Management
 
@@ -88,6 +89,13 @@ uv add package-name
 ```
 
 **IMPORTANT**: Do NOT create `requirements.txt` files. All dependencies are managed via `pyproject.toml`.
+
+## LLM Client Module
+
+- Shared OpenRouter integration lives in `api/llm/openrouter_client.py` and is re-exported via `api/llm/__init__.py`.
+- Within the API service, import using relative paths (`from llm import OpenRouterClient`). From external services (Streamlit), use `from api.llm import OpenRouterClient` after ensuring the repo root is on `sys.path`.
+- `complete_json(...)` enforces schema-validated responses for classification nodes; `chat(...)` streams plain text output for playgrounds.
+- The client automatically falls back from the primary model to the configured secondary model and returns token/latency telemetry for observability.
 
 ## Development Commands
 
