@@ -6,14 +6,16 @@ from datetime import datetime
 
 from models import OCRResult, ProcessMenuResponse, ErrorResponse
 from services import OCRService
+from services.parser_service import ParserService
 from config import settings
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["menu"])
 
-# Initialize OCR service
+# Initialize services
 ocr_service = OCRService()
+parser_service = ParserService()
 
 
 @router.post(
@@ -83,20 +85,20 @@ async def extract_text(
 @router.post(
     "/process-menu",
     response_model=ProcessMenuResponse,
-    summary="Process menu images and identify vegetarian dishes (Phase 1: OCR Only)",
+    summary="Process menu images and parse dishes (Phase 2: OCR + Parsing)",
 )
 async def process_menu(
     files: List[UploadFile] = File(..., description="Menu images (1-5 files)")
 ):
     """
-    Process menu images to extract text (Phase 1 implementation).
+    Process menu images to extract and parse dishes (Phase 2 implementation).
 
-    Future phases will add:
-    - Text parsing and dish extraction
-    - Vegetarian classification
-    - Price calculation via MCP server
+    - Phase 1: OCR text extraction ✅
+    - Phase 2: Parse dishes with names and prices ✅
+    - Phase 3+: Vegetarian classification (upcoming)
+    - Phase 4+: Price calculation via MCP server (upcoming)
 
-    Currently returns OCR results only.
+    Returns OCR results and parsed dishes.
     """
     import time
 
@@ -108,15 +110,39 @@ async def process_menu(
     # Extract text from images
     ocr_results_list = await extract_text(files)
 
+    # Phase 2: Parse dishes from OCR text
+    all_dishes = []
+    for ocr_result in ocr_results_list:
+        try:
+            # Parse dishes from OCR text
+            dishes = parser_service.parse_menu_text(ocr_result.raw_text)
+            all_dishes.extend(dishes)
+
+            # Log parsing results
+            stats = parser_service.get_parsing_stats(dishes)
+            logger.info(
+                f"Parsed {stats['total_dishes']} dishes from {ocr_result.image_name} "
+                f"({stats['dishes_with_prices']} with prices, "
+                f"avg confidence: {stats['average_confidence']:.2f})"
+            )
+        except Exception as e:
+            logger.error(f"Error parsing dishes from {ocr_result.image_name}: {str(e)}")
+            # Continue processing other images even if one fails
+
     processing_time = (time.time() - start_time) * 1000
 
-    # Phase 1: Return OCR results only
-    # Future phases will add parsing, classification, and calculation
+    logger.info(
+        f"Request {request_id} completed: {len(all_dishes)} dishes parsed "
+        f"in {processing_time:.2f}ms"
+    )
+
+    # Phase 2: Return OCR results and parsed dishes
+    # Future phases will add classification and calculation
     return ProcessMenuResponse(
         request_id=request_id,
         total_images=len(files),
         ocr_results=ocr_results_list,
-        dishes=[],  # Will be populated in Phase 2
+        dishes=all_dishes,
         vegetarian_dishes=[],  # Will be populated in Phase 3+
         total_price=0.0,  # Will be calculated in Phase 4+
         processing_time_ms=processing_time,

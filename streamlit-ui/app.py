@@ -60,7 +60,7 @@ def main():
     # Header
     st.markdown('<div class="main-header">🍽️ ConvergeFi Menu Analyzer</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="sub-header">Restaurant Menu Vegetarian Dish Analyzer - Phase 1: OCR Testing</div>',
+        '<div class="sub-header">Restaurant Menu Vegetarian Dish Analyzer - Dashboard</div>',
         unsafe_allow_html=True,
     )
 
@@ -84,20 +84,22 @@ def main():
         st.header("ℹ️ About")
         st.info(
             """
-            **Phase 1: OCR Testing**
+            **Current Status: Phase 2 Complete**
+
+            ✅ **Phase 1:** OCR text extraction
+            ✅ **Phase 2:** Text parsing & dish extraction
 
             Current capabilities:
             - Upload 1-5 menu images
             - Extract text using Tesseract OCR
-            - View extraction results
-            - See confidence scores
+            - Parse dishes with names and prices
+            - View confidence scores
 
-            Coming in future phases:
-            - Text parsing & dish extraction
-            - Vegetarian classification
-            - Price calculation
-            - LLM integration
-            - RAG for confidence scoring
+            **Coming Soon:**
+            - Phase 3: Vegetarian classification
+            - Phase 4: MCP server integration
+            - Phase 5: LLM classification
+            - Phase 6: RAG for confidence scoring
             """
         )
 
