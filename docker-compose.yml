@@ -40,21 +40,15 @@ services:
       - api
     restart: unless-stopped
 
-  # MCP Server Service (will be implemented in Phase 4)
-  # mcp-server:
-  #   build:
-  #     context: ./mcp-server
-  #     dockerfile: Dockerfile
-  #   container_name: convergefi-mcp
-  #   ports:
-  #     - "8001:8001"
-  #   environment:
-  #     - CHROMA_PERSIST_DIR=/app/chroma_db
-  #     - EMBEDDING_MODEL=all-MiniLM-L6-v2
-  #   volumes:
-  #     - ./mcp-server:/app
-  #     - chroma_data:/app/chroma_db
-  #   restart: unless-stopped
-
-# volumes:
-#   chroma_data:
+  mcp-server:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile
+    container_name: convergefi-mcp
+    ports:
+      - "8001:8001"
+    environment:
+      - CONFIDENCE_THRESHOLD=0.7
+    volumes:
+      - ./mcp-server:/app
+    restart: unless-stopped

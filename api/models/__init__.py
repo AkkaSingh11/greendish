@@ -1,12 +1,13 @@
 from .schemas import (
+    CalculationSummary,
+    ClassificationResult,
+    Dish,
+    ErrorResponse,
     HealthResponse,
     OCRResult,
-    Dish,
     ParsedDish,
     ParsedMenu,
-    ClassificationResult,
     ProcessMenuResponse,
-    ErrorResponse,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "ClassificationResult",
     "ProcessMenuResponse",
     "ErrorResponse",
+    "CalculationSummary",
 ]

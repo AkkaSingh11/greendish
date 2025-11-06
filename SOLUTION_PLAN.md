@@ -8,7 +8,7 @@ A microservices-based system centered around a LangGraph `menu-processor` agent 
 ### Core Framework
 - **Language**: Python 3.11+
 - **REST API**: FastAPI
-- **MCP Server**: Python MCP SDK (`mcp` package)
+- **MCP Server**: Python MCP SDK (`mcp` package) leveraged via FastMCP for defining tools/resources over stdio and HTTP transports
 
 ### Key Libraries & Tools
 - **OCR**: Tesseract OCR + `pytesseract`
@@ -278,6 +278,7 @@ graph.add_edge("calculate", END)
   - Input: List of classified vegetarian dishes `[{name, price, confidence}]`
   - Output: `{total: float, confidence: float, reasoning: str}`
   - Pure calculation logic - no classification
+  - Declared with type-hinted return models so FastMCP emits structured tool responses automatically
 
 #### Flow
 1. **Receive Dishes**: Get list of pre-classified vegetarian dishes
@@ -285,6 +286,13 @@ graph.add_edge("calculate", END)
 3. **Summation**: Calculate total price
 4. **Confidence Aggregation**: Average/weighted confidence across dishes
 5. **Return**: JSON with total and reasoning
+
+#### Protocol Usage Notes
+- Stand up the service with `FastMCP` from the MCP Python SDK to manage connection lifecycle, stdio/HTTP transports, and capability negotiation.
+- MCP divides functionality into **Resources** (read-only context), **Tools** (actions), and **Prompts** (reusable LLM instructions); we will prioritise tools for calculations and optionally expose resources like `resource://classifier/keywords` for debugging.
+- The calculator tool can accept a `Context` parameter when we need progress reporting or logging back to clients (e.g., LangGraph nodes or MCP Inspector).
+- Host the server via Streamable HTTP so the FastAPI service and LangGraph agent can call the MCP endpoint over the internal network while still supporting stdio for local inspection.
+- Keep implementation aligned with the published specification at `https://modelcontextprotocol.io/specification/latest` for forward compatibility.
 
 #### Key Modules
 ```
@@ -434,11 +442,11 @@ volumes:
 5. Test non-AI classification pipeline
 
 ### Phase 4: MCP Server - Pure Calculation (Day 4)
-1. Setup MCP server with HTTP transport
-2. Implement `calculate_vegetarian_total` tool (pure calculation)
-3. Accept pre-classified dishes as input
-4. Create summation and confidence aggregation logic
-5. Test inter-service communication
+1. Setup FastMCP server with Streamable HTTP transport (while retaining stdio for MCP Inspector)
+2. Implement `calculate_vegetarian_total` tool (pure calculation) with typed models for structured responses
+3. Accept pre-classified dishes as input and optionally expose read-only resources (e.g., keyword catalog metadata) for debugging
+4. Create summation and confidence aggregation logic plus optional `Context`-driven logging
+5. Test inter-service communication (FastAPI ↔ MCP) via httpx client and MCP Inspector
 
 ### Phase 5: Non-AI End-to-End Pipeline (Day 5)
 1. Integrate keyword classifier with MCP server

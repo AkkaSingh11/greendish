@@ -6,12 +6,13 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi",
     "uvicorn[standard]",
-    "pydantic",
-    "pydantic-settings",
+    "pydantic>=2.7,<3",
+    "pydantic-settings>=2.2,<3",
     "python-dotenv",
     "chromadb",
     "sentence-transformers",
     "httpx",
+    "mcp[cli]",
 ]
 
 [tool.uv]

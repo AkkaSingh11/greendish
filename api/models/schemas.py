@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 
 
@@ -28,6 +28,7 @@ class Dish(BaseModel):
     confidence: Optional[float] = None
     classification_method: Optional[str] = None  # "keyword", "llm", "rag"
     reasoning: Optional[str] = None
+    signals: Optional[Dict[str, List[str]]] = None
 
 
 class ParsedDish(BaseModel):
@@ -69,6 +70,7 @@ class ProcessMenuResponse(BaseModel):
     total_price: float
     processing_time_ms: float
     langsmith_trace_url: Optional[str] = None
+    calculation_summary: Optional["CalculationSummary"] = None
 
 
 class ErrorResponse(BaseModel):
@@ -76,3 +78,18 @@ class ErrorResponse(BaseModel):
     error: str
     detail: Optional[str] = None
     timestamp: str
+
+
+class CalculationSummary(BaseModel):
+    """Aggregated vegetarian totals returned from MCP server."""
+
+    total_price: float
+    average_confidence: float
+    dish_count: int
+    uncertain_dishes: List[str] = Field(default_factory=list)
+    reasoning: str
+    priced_dish_count: Optional[int] = None
+    missing_price_count: Optional[int] = None
+
+
+ProcessMenuResponse.model_rebuild()

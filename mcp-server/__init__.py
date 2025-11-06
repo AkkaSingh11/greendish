@@ -1,0 +1,1 @@
+"""ConvergeFi MCP server package."""

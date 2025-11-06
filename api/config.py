@@ -1,5 +1,8 @@
-from pydantic_settings import BaseSettings
+from pathlib import Path
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
+
+BASE_DIR = Path(__file__).resolve().parent
 
 
 class Settings(BaseSettings):
@@ -32,15 +35,21 @@ class Settings(BaseSettings):
     # Classification Settings
     confidence_threshold: float = 0.7
     use_keyword_fallback: bool = True
+    keyword_mode_enabled: bool = True
+    keyword_data_path: str = str(BASE_DIR / "data/vegetarian_keywords.json")
+    keyword_fuzzy_threshold: float = 0.82
+    keyword_max_hint_bonus: float = 0.15
 
     # LangSmith Settings
     langchain_tracing_v2: bool = False
     langchain_api_key: Optional[str] = None
     langchain_project: str = "convergefi-menu-analyzer"
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
 
 # Global settings instance

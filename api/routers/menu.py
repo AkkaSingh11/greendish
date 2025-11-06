@@ -1,5 +1,5 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException
-from typing import List
+from typing import List, Optional
 import logging
 import uuid
 from datetime import datetime
@@ -10,8 +10,16 @@ from models import (
     ErrorResponse,
     ParsedMenu,
     ParsedDish,
+    Dish,
+    CalculationSummary,
 )
-from services import OCRService
+from services import (
+    OCRService,
+    KeywordClassifier,
+    KeywordClassifierError,
+    MCPClient,
+    get_mcp_client,
+)
 from services.parser_service import ParserService
 from config import settings
 
@@ -22,6 +30,18 @@ router = APIRouter(prefix="/api/v1", tags=["menu"])
 # Initialize services
 ocr_service = OCRService()
 parser_service = ParserService()
+
+keyword_classifier = None
+if settings.keyword_mode_enabled:
+    try:
+        keyword_classifier = KeywordClassifier(
+            confidence_threshold=settings.confidence_threshold,
+            fuzzy_threshold=settings.keyword_fuzzy_threshold,
+        )
+    except KeywordClassifierError as exc:
+        logger.warning("Keyword classifier unavailable: %s", exc)
+
+mcp_client: Optional[MCPClient] = get_mcp_client()
 
 
 @router.post(
@@ -97,14 +117,14 @@ async def process_menu(
     files: List[UploadFile] = File(..., description="Menu images (1-5 files)")
 ):
     """
-    Process menu images to extract and parse dishes (Phase 2 implementation).
+    Process menu images to extract dishes, classify vegetarian options, and calculate totals.
 
     - Phase 1: OCR text extraction ✅
     - Phase 2: Parse dishes with names and prices ✅
-    - Phase 3+: Vegetarian classification (upcoming)
-    - Phase 4+: Price calculation via MCP server (upcoming)
+    - Phase 3: Keyword-based vegetarian classification ✅
+    - Phase 4: Price calculation via MCP server ✅
 
-    Returns OCR results and parsed dishes.
+    Returns OCR results, parsed dishes, vegetarian breakdown, and total price.
     """
     import time
 
@@ -167,16 +187,74 @@ async def process_menu(
         f"in {processing_time:.2f}ms"
     )
 
-    # Phase 2: Return OCR results and parsed dishes
-    # Future phases will add classification and calculation
+    vegetarian_dishes: List[Dish] = []
+    calculation_summary: Optional[CalculationSummary] = None
+    if settings.keyword_mode_enabled and keyword_classifier:
+        uncertain: List[str] = []
+        for dish in all_dishes:
+            result = keyword_classifier.classify_and_update(dish)
+            if result.is_vegetarian:
+                vegetarian_dishes.append(dish)
+            if result.is_uncertain:
+                uncertain.append(f"{dish.name} ({result.confidence:.2f})")
+
+        if uncertain:
+            logger.info(
+                "Keyword classifier marked %d dish(es) as uncertain: %s",
+                len(uncertain),
+                ", ".join(uncertain[:5]),
+            )
+    else:
+        vegetarian_dishes = []
+
+    total_price = 0.0
+    if vegetarian_dishes:
+        priced_dishes = [dish for dish in vegetarian_dishes if dish.price is not None]
+        if mcp_client and priced_dishes:
+            try:
+                calculation_summary = await mcp_client.calculate_total(
+                    priced_dishes,
+                    request_id=request_id,
+                )
+                total_price = calculation_summary.total_price
+            except Exception as exc:  # pragma: no cover - network failures
+                logger.error("Failed to calculate total via MCP: %s", exc)
+        if calculation_summary is None:
+            # Local fallback calculation
+            confidences = [dish.confidence or 0.0 for dish in priced_dishes]
+            average_confidence = (
+                sum(confidences) / len(confidences) if confidences else 0.0
+            )
+            total_price = round(sum(dish.price or 0.0 for dish in priced_dishes), 2)
+            missing_count = len(vegetarian_dishes) - len(priced_dishes)
+            calculation_summary = CalculationSummary(
+                total_price=total_price,
+                average_confidence=round(average_confidence, 3),
+                dish_count=len(priced_dishes),
+                priced_dish_count=len(priced_dishes),
+                missing_price_count=missing_count,
+                uncertain_dishes=[
+                    dish.name
+                    for dish in priced_dishes
+                    if (dish.confidence or 0.0) < settings.confidence_threshold
+                ],
+                reasoning=(
+                    f"Out of {len(vegetarian_dishes)} vegetarian dishes, "
+                    f"{len(priced_dishes)} had prices and {missing_count} were missing prices. "
+                    "Local fallback calculation executed."
+                ),
+            )
+
+    # Phase 4: Return OCR results, parsed dishes, and vegetarian totals
     return ProcessMenuResponse(
         request_id=request_id,
         total_images=len(files),
         ocr_results=ocr_results_list,
         dishes=all_dishes,
         parsed_menu=parsed_menu,
-        vegetarian_dishes=[],  # Will be populated in Phase 3+
-        total_price=0.0,  # Will be calculated in Phase 4+
+        vegetarian_dishes=vegetarian_dishes,
+        total_price=total_price,
         processing_time_ms=processing_time,
         langsmith_trace_url=None,  # Will be added in Phase 7
+        calculation_summary=calculation_summary,
     )

@@ -84,22 +84,24 @@ def main():
         st.header("ℹ️ About")
         st.info(
             """
-            **Current Status: Phase 2 Complete**
+            **Current Status: Phase 4 Complete**
 
-            ✅ **Phase 1:** OCR text extraction
-            ✅ **Phase 2:** Text parsing & dish extraction
+            ✅ **Phase 1:** OCR text extraction  
+            ✅ **Phase 2:** Text parsing & dish extraction  
+            ✅ **Phase 3:** Keyword-based vegetarian classification  
+            ✅ **Phase 4:** MCP calculator integration
 
             Current capabilities:
             - Upload 1-5 menu images
             - Extract text using Tesseract OCR
             - Parse dishes with names and prices
-            - View confidence scores
+            - Classify vegetarian dishes with confidence scores
+            - Aggregate vegetarian totals via MCP calculator
 
             **Coming Soon:**
-            - Phase 3: Vegetarian classification
-            - Phase 4: MCP server integration
             - Phase 5: LLM classification
             - Phase 6: RAG for confidence scoring
+            - Phase 7: LangGraph agent orchestration
             """
         )
 
@@ -108,10 +110,9 @@ def main():
         st.header("📝 Instructions")
         st.markdown(
             """
-            1. Upload menu images (JPEG, PNG, WEBP)
-            2. Click "Extract Text" button
-            3. Review OCR results
-            4. Check confidence scores
+            1. Upload menu images (JPEG, PNG, WEBP)  
+            2. Click "Process Menu"  
+            3. Review OCR text, parsed dishes, and vegetarian classifications
             """
         )
 
@@ -144,13 +145,13 @@ def main():
 
         st.divider()
 
-        # Extract text button
-        if st.button("🔍 Extract Text", type="primary", use_container_width=True):
+        # Process menu button
+        if st.button("🧠 Process Menu", type="primary", use_container_width=True):
             if health["status"] != "healthy":
                 st.error("❌ API is not available. Please start the API server first.")
                 return
 
-            with st.spinner("🔄 Extracting text from images..."):
+            with st.spinner("🔄 Processing menu images..."):
                 try:
                     # Prepare files for upload
                     files = []
@@ -163,7 +164,7 @@ def main():
                     # Make API request
                     start_time = time.time()
                     response = requests.post(
-                        config.API_EXTRACT_TEXT_ENDPOINT,
+                        config.API_PROCESS_MENU_ENDPOINT,
                         files=files,
                         timeout=60,
                     )
@@ -172,12 +173,14 @@ def main():
                     if response.status_code == 200:
                         results = response.json()
 
-                        st.success(f"✅ Text extraction completed in {elapsed_time:.2f}ms")
+                        st.success(f"✅ Menu processed in {elapsed_time:.2f}ms")
 
                         # Display results
                         st.header("📄 OCR Results")
 
-                        for idx, result in enumerate(results):
+                        ocr_results: List[dict] = results.get("ocr_results", [])
+
+                        for idx, result in enumerate(ocr_results):
                             with st.expander(
                                 f"📝 {result['image_name']} - {result['confidence']:.1f}% confidence",
                                 expanded=True,
@@ -211,6 +214,68 @@ def main():
                                         st.warning("Medium Confidence")
                                     else:
                                         st.error("Low Confidence")
+
+                        # Menu parsing summary
+                        parsed_menu = results.get("parsed_menu", {})
+                        dishes = results.get("dishes", [])
+                        vegetarian_dishes = results.get("vegetarian_dishes", [])
+                        calculation_summary = results.get("calculation_summary")
+
+                        total_dishes = parsed_menu.get("total_dishes", len(dishes))
+                        veg_count = len(vegetarian_dishes)
+                        veg_percent = (veg_count / total_dishes * 100) if total_dishes else 0.0
+
+                        st.header("🥗 Vegetarian Classification Summary")
+                        col_summary = st.columns(4 if calculation_summary else 3)
+                        col_summary[0].metric("Total Dishes", total_dishes)
+                        col_summary[1].metric("Vegetarian Dishes", veg_count)
+                        col_summary[2].metric("Vegetarian %", f"{veg_percent:.1f}%")
+
+                        summary_reason = None
+                        if calculation_summary:
+                            col_summary[3].metric(
+                                "Vegetarian Total",
+                                f"${calculation_summary.get('total_price', 0.0):.2f}",
+                            )
+                            priced = calculation_summary.get("priced_dish_count")
+                            missing = calculation_summary.get("missing_price_count")
+                            parts = [
+                                f"MCP Avg Confidence: {calculation_summary.get('average_confidence', 0):.2f}",
+                            ]
+                            if priced is not None:
+                                parts.append(f"Priced dishes: {priced}")
+                            if missing:
+                                parts.append(f"Missing price: {missing}")
+                            st.caption(" | ".join(parts))
+                            summary_reason = calculation_summary.get("reasoning")
+
+                        if vegetarian_dishes:
+                            msg = (
+                                f"{veg_count} of {total_dishes} dishes classified as vegetarian "
+                                f"({veg_percent:.1f}%)."
+                            )
+                            if calculation_summary:
+                                msg += f" MCP total: ${calculation_summary.get('total_price', 0.0):.2f}."
+                            st.success(msg)
+                            if summary_reason:
+                                st.caption(summary_reason)
+                        else:
+                            st.warning("No vegetarian dishes detected.")
+
+                        if dishes:
+                            st.subheader("🍽️ Parsed Dishes")
+                            for dish in dishes:
+                                with st.expander(
+                                    f"{'🥗' if dish.get('is_vegetarian') else '🍖'} {dish.get('name', 'Unknown')} "
+                                    f"- Confidence {dish.get('confidence', 0) * 100:.0f}%"
+                                ):
+                                    st.write(f"**Price:** {dish.get('price', 'N/A')}")
+                                    st.write(f"**Vegetarian:** {dish.get('is_vegetarian')}")
+                                    st.write(f"**Method:** {dish.get('classification_method', 'n/a')}")
+                                    st.write(f"**Reasoning:** {dish.get('reasoning', 'n/a')}")
+                                    if dish.get("signals"):
+                                        st.json(dish["signals"])
+                                    st.code(dish.get("raw_text", ""), language="text")
 
                     else:
                         st.error(f"❌ API Error: {response.status_code}")
