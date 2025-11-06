@@ -4,7 +4,13 @@ import logging
 import uuid
 from datetime import datetime
 
-from models import OCRResult, ProcessMenuResponse, ErrorResponse
+from models import (
+    OCRResult,
+    ProcessMenuResponse,
+    ErrorResponse,
+    ParsedMenu,
+    ParsedDish,
+)
 from services import OCRService
 from services.parser_service import ParserService
 from config import settings
@@ -131,8 +137,33 @@ async def process_menu(
 
     processing_time = (time.time() - start_time) * 1000
 
+    overall_stats = parser_service.get_parsing_stats(all_dishes)
+    ocr_confidences = [res.confidence for res in ocr_results_list if res.confidence is not None]
+    avg_ocr_confidence = (
+        round(sum(ocr_confidences) / len(ocr_confidences), 2)
+        if ocr_confidences
+        else None
+    )
+
+    parsed_menu = ParsedMenu(
+        dishes=[
+            ParsedDish(
+                name=dish.name,
+                price=dish.price,
+                raw_text=dish.raw_text,
+            )
+            for dish in all_dishes
+        ],
+        total_dishes=overall_stats["total_dishes"],
+        dishes_with_prices=overall_stats["dishes_with_prices"],
+        dishes_without_prices=overall_stats["dishes_without_prices"],
+        price_coverage=overall_stats["price_coverage"],
+        average_confidence=overall_stats["average_confidence"],
+        average_ocr_confidence=avg_ocr_confidence,
+    )
+
     logger.info(
-        f"Request {request_id} completed: {len(all_dishes)} dishes parsed "
+        f"Request {request_id} completed: {parsed_menu.total_dishes} dishes parsed "
         f"in {processing_time:.2f}ms"
     )
 
@@ -143,6 +174,7 @@ async def process_menu(
         total_images=len(files),
         ocr_results=ocr_results_list,
         dishes=all_dishes,
+        parsed_menu=parsed_menu,
         vegetarian_dishes=[],  # Will be populated in Phase 3+
         total_price=0.0,  # Will be calculated in Phase 4+
         processing_time_ms=processing_time,

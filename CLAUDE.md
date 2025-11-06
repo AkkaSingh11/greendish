@@ -6,9 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ConvergeFi is a microservices-based Restaurant Menu Vegetarian Dish Analyzer that processes menu photos to identify and calculate total prices of vegetarian dishes. The system uses:
 - **OCR** (Tesseract) for text extraction
-- **LLM classification** (GPT-4o-mini/Claude) for intelligent dish categorization
-- **RAG** (ChromaDB + sentence-transformers) for confidence scoring
-- **MCP (Model Context Protocol)** server for calculation logic
+- **Structured parsing** that emits canonical `{name, price, raw_text}` JSON for each dish
+- **LLM classification** via OpenRouter (primary `deepseek/deepseek-chat-v3.1`, fallback `openai/gpt-oss-120b`)
+- **LangGraph menu-processor agent** to orchestrate dish classification, RAG fallback, and MCP tool usage
+- **RAG** (ChromaDB + sentence-transformers) for confidence bolstering when classification is uncertain
+- **MCP (Model Context Protocol)** server for deterministic price calculation logic
 - **LangSmith** for observability
 
 ## Architecture
@@ -16,18 +18,17 @@ ConvergeFi is a microservices-based Restaurant Menu Vegetarian Dish Analyzer tha
 The system is split into three microservices that communicate over HTTP:
 
 1. **API Service** (`/api`) - FastAPI REST API
-   - Handles image upload, OCR, text parsing, and LLM classification
-   - Entry point for all client requests
-   - Communicates with MCP server for calculations
+   - Handles image upload, OCR, text parsing, and emits structured parsed menu JSON (`parsed_menu`)
+   - Orchestrates the LangGraph `menu-processor` agent for dish classification and RAG fallback
+   - Communicates with the MCP server tool for price aggregation
 
 2. **MCP Server** (`/mcp-server`) - Calculation service
-   - Implements MCP tools for vegetarian dish calculations
-   - Manages RAG vector search with ChromaDB
-   - Handles confidence scoring
+   - Implements deterministic MCP tools for vegetarian dish calculations
+   - Receives pre-classified vegetarian dishes and returns totals/confidence
 
 3. **Streamlit UI** (`/streamlit-ui`) - Testing interface
    - Multi-page app for testing each phase
-   - Each page corresponds to a development phase
+   - Mirrors API outputs, including the structured `parsed_menu` JSON for verification
 
 ## Import Structure
 
@@ -172,7 +173,9 @@ Key settings:
 - `MAX_IMAGES`: Maximum images per request (default: 5)
 - `TESSERACT_CMD`: Path to Tesseract binary (auto-detect if None)
 - `MCP_SERVER_URL`: MCP server endpoint (Phase 4+)
-- `OPENAI_API_KEY`: For LLM classification (Phase 5+)
+- `OPENROUTER_API_KEY`: For LLM classification (Phase 5+)
+- `OPENROUTER_PRIMARY_MODEL`: Default `deepseek/deepseek-chat-v3.1`
+- `OPENROUTER_FALLBACK_MODEL`: Default `openai/gpt-oss-120b`
 - `LANGCHAIN_TRACING_V2`: Enable LangSmith tracing (Phase 7+)
 - `CONFIDENCE_THRESHOLD`: Classification confidence threshold (default: 0.7)
 
@@ -190,7 +193,7 @@ This project is being built in **10 phases**. See `PHASE_WISE_PLAN.MD` for the c
 ### Key Phase Dependencies
 - **Phase 1-3**: API service only (no MCP server needed)
 - **Phase 4+**: MCP server required
-- **Phase 5+**: OpenAI API key required
+- **Phase 5+**: OpenRouter API key required
 - **Phase 6+**: ChromaDB integration required
 - **Phase 7+**: LangSmith API key required
 
@@ -212,9 +215,9 @@ All API endpoints are prefixed with `/api/v1/` to allow future versioning.
 **POST /api/v1/process-menu**
 - Full menu processing pipeline
 - Phase 1: Returns only OCR results
-- Phase 2+: Returns parsed dishes
+- Phase 2+: Returns structured `parsed_menu` JSON (dishes + stats)
 - Phase 3+: Returns classified vegetarian dishes
-- Phase 4+: Returns total price via MCP calculation
+- Phase 4+: Returns total price via MCP calculation tool
 
 ### Response Models
 
@@ -222,6 +225,7 @@ All API responses use Pydantic models defined in `/api/models/schemas.py`:
 - `HealthResponse`
 - `OCRResult` - Single image OCR result
 - `Dish` - Structured dish with name, price, classification
+- `ParsedDish` / `ParsedMenu` - Canonical parsed menu payload returned post-OCR
 - `ProcessMenuResponse` - Complete menu processing result
 
 ## Service Layer Pattern
@@ -234,16 +238,19 @@ Business logic is separated into service classes in `/api/services/`:
 
 Each service is instantiated once at module level in the router and reused across requests.
 
+Agent workflows are defined in `/api/agents/`:
+- `menu_processor.py` builds the LangGraph state machine that coordinates parsing output, LLM classification, RAG lookups, and MCP tool calls.
+- Node modules (`classifier_node.py`, `rag_node.py`, `calculator_node.py`) should remain small and composable.
+
 ## MCP Server Architecture (Phase 4+)
 
 The MCP server implements tools following the Model Context Protocol standard:
 
 **Tools:**
-- `calculate_vegetarian_total` - Sums prices of vegetarian dishes
-- `search_similar_dishes` - RAG vector search (Phase 6)
-- `update_knowledge_base` - HITL feedback integration (Phase 8)
+- `calculate_vegetarian_total` - Sums prices of vegetarian dishes (primary tool)
+- Additional calculation utilities may be added in later phases, but RAG stays within the LangGraph agent.
 
-Communication between API and MCP server uses HTTP transport with JSON-RPC style requests.
+Communication between API/LangGraph and MCP server uses HTTP transport with JSON-RPC style requests.
 
 ## Streamlit UI Structure
 
@@ -273,19 +280,20 @@ Use `test_ocr.py` for quick validation that OCR is working. Full pytest suite wi
 
 When implementing LLM classification:
 1. Always implement keyword fallback first (Phase 3)
-2. LLM should return JSON with: `{is_vegetarian: bool, confidence: float, reasoning: str}`
-3. Use hybrid approach: LLM primary, keyword fallback on failure
-4. Track token usage and costs via LangSmith
-5. Cache LLM responses to minimize API calls
+2. Route requests through OpenRouter using `deepseek/deepseek-chat-v3.1` as the default model and `openai/gpt-oss-120b` as fallback (configurable via env / Streamlit UI)
+3. LLM responses must be strict JSON: `{is_vegetarian: bool, confidence: float, reasoning: str}`
+4. Use LangGraph state to decide when to trigger RAG lookups and re-classify
+5. Track token usage and costs via LangSmith
+6. Cache LLM responses to minimize API calls
 
 ## RAG Implementation (Phase 6)
 
-ChromaDB setup:
+ChromaDB setup (invoked from the LangGraph agent within the API service):
 - Use `sentence-transformers/all-MiniLM-L6-v2` for embeddings (fast, good quality)
-- Persistent storage in `/mcp-server/chroma_db/`
-- Seed data from `/mcp-server/data/vegetarian_db.json`
+- Persistent storage in `/api/rag_db/`
+- Seed data from `/api/data/vegetarian_db.json`
 - Retrieve top-3 similar dishes per query
-- Combine RAG similarity score with LLM confidence
+- Feed retrieved context back into the classification node and merge similarity score with LLM confidence
 
 ## Common Pitfalls
 

@@ -87,18 +87,27 @@ def process_menu_images(uploaded_files: List) -> Dict:
         raise Exception(f"API Error {response.status_code}: {response.text}")
 
 
-def display_parsing_stats(dishes: List[Dict]):
+def display_parsing_stats(parsed_menu: Dict, dishes: List[Dict]):
     """Display parsing statistics."""
-    if not dishes:
+    if not parsed_menu and not dishes:
         st.warning("No dishes parsed")
         return
 
-    total_dishes = len(dishes)
-    dishes_with_prices = sum(1 for d in dishes if d.get("price") is not None)
-    dishes_without_prices = total_dishes - dishes_with_prices
+    total_dishes = parsed_menu.get("total_dishes") if parsed_menu else len(dishes)
+    dishes_with_prices = parsed_menu.get("dishes_with_prices") if parsed_menu else sum(
+        1 for d in dishes if d.get("price") is not None
+    )
+    dishes_without_prices = parsed_menu.get("dishes_without_prices") if parsed_menu else max(
+        total_dishes - dishes_with_prices, 0
+    )
 
-    avg_confidence = sum(d.get("confidence", 0.0) for d in dishes) / total_dishes
-    price_coverage = dishes_with_prices / total_dishes if total_dishes > 0 else 0
+    avg_confidence = parsed_menu.get("average_confidence") if parsed_menu else (
+        sum(d.get("confidence", 0.0) for d in dishes) / total_dishes if total_dishes else 0
+    )
+    price_coverage = parsed_menu.get("price_coverage") if parsed_menu else (
+        dishes_with_prices / total_dishes if total_dishes > 0 else 0
+    )
+    avg_ocr_confidence = parsed_menu.get("average_ocr_confidence") if parsed_menu else None
 
     # Display metrics
     col1, col2, col3, col4 = st.columns(4)
@@ -115,6 +124,9 @@ def display_parsing_stats(dishes: List[Dict]):
 
     with col4:
         st.metric("Avg Confidence", f"{avg_confidence:.2f}")
+
+    if avg_ocr_confidence is not None:
+        st.caption(f"Average OCR Confidence: {avg_ocr_confidence:.2f}%")
 
 
 def main():
@@ -235,10 +247,17 @@ def main():
 
                     # Display Parsing Statistics
                     st.header("📊 Parsing Statistics")
+                    parsed_menu = result.get('parsed_menu', {})
                     dishes = result.get('dishes', [])
-                    display_parsing_stats(dishes)
+                    display_parsing_stats(parsed_menu, dishes)
 
                     st.divider()
+
+                    if parsed_menu:
+                        st.header("🧾 Structured Menu JSON")
+                        st.json(parsed_menu)
+
+                        st.divider()
 
                     # Display Parsed Dishes Table
                     st.header("🍽️ Parsed Dishes")

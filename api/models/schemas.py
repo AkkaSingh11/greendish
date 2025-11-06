@@ -30,6 +30,24 @@ class Dish(BaseModel):
     reasoning: Optional[str] = None
 
 
+class ParsedDish(BaseModel):
+    """Simplified dish payload returned to clients."""
+    name: str
+    price: Optional[float] = None
+    raw_text: str
+
+
+class ParsedMenu(BaseModel):
+    """Structured menu payload produced after parsing."""
+    dishes: List[ParsedDish] = Field(default_factory=list)
+    total_dishes: int = 0
+    dishes_with_prices: int = 0
+    dishes_without_prices: int = 0
+    price_coverage: float = 0.0
+    average_confidence: float = 0.0
+    average_ocr_confidence: Optional[float] = None
+
+
 class ClassificationResult(BaseModel):
     """Classification result for dishes."""
     dish: Dish
@@ -46,6 +64,7 @@ class ProcessMenuResponse(BaseModel):
     total_images: int
     ocr_results: List[OCRResult]
     dishes: List[Dish]
+    parsed_menu: ParsedMenu
     vegetarian_dishes: List[Dish]
     total_price: float
     processing_time_ms: float
