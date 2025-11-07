@@ -82,9 +82,9 @@ async def test_process_menu_ai_mode_runs_agent(monkeypatch: pytest.MonkeyPatch) 
                 SimpleNamespace(
                     index=0,
                     name="AI Soup",
-                    is_vegetarian=False,
-                    confidence=0.2,
-                    reasoning="Insufficient evidence without context.",
+                    is_vegetarian=True,
+                    confidence=0.92,
+                    reasoning="Menu description mentions only vegetables.",
                     signals=["dish name implies vegetables"],
                 )
             ]

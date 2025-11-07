@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
@@ -8,10 +9,17 @@ from config import settings
 from models import HealthResponse
 from routers import menu_router, rag_router
 
-# Configure logging
+log_dir = Path(settings.logs_dir)
+log_dir.mkdir(parents=True, exist_ok=True)
+log_file = log_dir / "api.log"
+
 logging.basicConfig(
     level=logging.INFO if settings.debug else logging.WARNING,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(log_file, mode="a", encoding="utf-8"),
+    ],
 )
 
 logger = logging.getLogger(__name__)

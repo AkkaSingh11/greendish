@@ -257,8 +257,8 @@ def main():
                     # Make API request
                     start_time = time.time()
                     params = {"mode": selected_mode}
-                    if ai_mode_selected:
-                        params["use_rag"] = use_rag
+                        if ai_mode_selected:
+                            params["use_rag"] = use_rag
                     response = requests.post(
                         config.API_PROCESS_MENU_ENDPOINT,
                         files=files,
@@ -319,6 +319,7 @@ def main():
                         dishes = results.get("dishes", [])
                         vegetarian_dishes = results.get("vegetarian_dishes", [])
                         calculation_summary = results.get("calculation_summary")
+                        used_mcp = bool(calculation_summary)
 
                         total_dishes = parsed_menu.get("total_dishes", len(dishes))
                         veg_count = len(vegetarian_dishes)
@@ -360,6 +361,11 @@ def main():
                                 st.caption(summary_reason)
                         else:
                             st.warning("No vegetarian dishes detected.")
+
+                        if ai_mode_selected and not used_mcp and vegetarian_dishes:
+                            st.warning(
+                                "MCP calculator was unavailable. A local fallback total was used instead."
+                            )
 
                         if dishes:
                             st.subheader("🍽️ Parsed Dishes")

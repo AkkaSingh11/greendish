@@ -254,6 +254,7 @@ async def process_menu(
 
     # Extract text from images
     ocr_results_list = await extract_text(files)
+    logger.info("Request %s: OCR extracted %d image(s).", request_id, len(ocr_results_list))
 
     # Phase 2: Parse dishes from OCR text
     all_dishes = []
@@ -266,9 +267,12 @@ async def process_menu(
             # Log parsing results
             stats = parser_service.get_parsing_stats(dishes)
             logger.info(
-                f"Parsed {stats['total_dishes']} dishes from {ocr_result.image_name} "
-                f"({stats['dishes_with_prices']} with prices, "
-                f"avg confidence: {stats['average_confidence']:.2f})"
+                "Request %s: Parsed %d dishes from %s (%d with prices, avg confidence %.2f).",
+                request_id,
+                stats["total_dishes"],
+                ocr_result.image_name,
+                stats["dishes_with_prices"],
+                stats["average_confidence"],
             )
         except Exception as e:
             logger.error(f"Error parsing dishes from {ocr_result.image_name}: {str(e)}")
@@ -307,6 +311,7 @@ async def process_menu(
 
     if normalized_mode == "ai":
         classifier = get_batch_classifier()
+        logger.info("Request %s: Running batch classification for %d dishes.", request_id, len(all_dishes))
         try:
             batch_items = await classifier.classify(all_dishes, request_id=request_id)
         except OpenRouterError as exc:
@@ -345,6 +350,11 @@ async def process_menu(
         agent_map: dict[int, Dish] = {}
         if effective_rag and uncertain_inputs:
             agent = get_ai_agent()
+            logger.info(
+                "Request %s: %d dish(es) below confidence threshold. Invoking LangGraph/RAG.",
+                request_id,
+                len(uncertain_inputs),
+            )
             try:
                 agent_state = await agent.run(uncertain_inputs, request_id=request_id, mode=normalized_mode)
             except OpenRouterError as exc:
@@ -370,6 +380,12 @@ async def process_menu(
                 if not isinstance(dish_obj, Dish):
                     dish_obj = Dish.model_validate(dish_obj)
                 agent_map[idx] = dish_obj
+        elif uncertain_inputs:
+            logger.info(
+                "Request %s: %d low-confidence dish(es) detected, but RAG is disabled.",
+                request_id,
+                len(uncertain_inputs),
+            )
 
         for idx, dish in enumerate(all_dishes):
             final = agent_map.get(idx) or classified_map.get(idx) or dish
@@ -396,6 +412,12 @@ async def process_menu(
         final_dishes = list(all_dishes)
 
     total_price, calculation_summary = await _calculate_totals(request_id, vegetarian_dishes)
+    logger.info(
+        "Request %s: Computed vegetarian total %.2f across %d dish(es).",
+        request_id,
+        total_price,
+        len(vegetarian_dishes),
+    )
 
     processing_time = (time.time() - start_time) * 1000
 
@@ -416,7 +438,7 @@ async def process_menu(
         vegetarian_dishes=vegetarian_dishes,
         total_price=total_price,
         processing_time_ms=processing_time,
-        langsmith_trace_url=None,  # Will be added in Phase 7
+        langsmith_trace_url=agent_state.get("trace_url") if normalized_mode == "ai" else None,
         calculation_summary=calculation_summary,
         mode=normalized_mode,
     )

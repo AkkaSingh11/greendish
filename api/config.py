@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     openrouter_app_name: str = "ConvergeFi-Menu Analyzer"
     openrouter_referer: Optional[str] = None
 
+    # Logging Settings
+    logs_dir: str = str(BASE_DIR.parent / "logs")
+
     # Classification Settings
     confidence_threshold: float = 0.7
     use_keyword_fallback: bool = True
