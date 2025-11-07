@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     logs_dir: str = str(BASE_DIR.parent / "logs")
 
     # Classification Settings
-    confidence_threshold: float = 0.7
+    confidence_threshold: float = 0.4
     use_keyword_fallback: bool = True
     keyword_mode_enabled: bool = True
     keyword_data_path: str = str(BASE_DIR / "data/vegetarian_keywords.json")
