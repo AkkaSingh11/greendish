@@ -8,7 +8,7 @@ This document details the implementation plan for phases 6–8, grounded in the 
   - `/api/v1/process-menu` currently rejects `mode=ai` with a 501, confirming phases 6–8 are not implemented yet: `api/routers/menu.py:146`.
   - Keyword pipeline and models are live: `api/services/keyword_classifier.py`, `api/models/schemas.py:24`.
   - MCP calculator tool exists and is invokable via client: `mcp-server/tools/calculator.py:55`, `api/services/mcp_client.py:34`.
-- Config has OpenAI defaults but no OpenRouter‑specific settings yet: `api/config.py:29`.
+- Config wiring needs OpenRouter-specific settings/endpoints for LangGraph.
 
 ## Phase 6 — OpenRouter Integration
 
@@ -16,8 +16,8 @@ Goal: Add an OpenRouter client thin wrapper with model selection, retry/fallback
 
 - Configuration
   - Add settings and env vars:
-    - `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL` (default `https://openrouter.ai/api/v1`), `OPENROUTER_PRIMARY_MODEL` (`deepseek/deepseek-chat-v3.1`), `OPENROUTER_FALLBACK_MODEL` (`openai/gpt-oss-120b`).
-  - Map these into `api/config.py` and `.env.example` without altering existing OpenAI keys (kept for future flexibility).
+    - `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL` (default `https://openrouter.ai/api/v1`), `OPENROUTER_PRIMARY_MODEL` (`deepseek/deepseek-chat-v3.1`), optional `OPENROUTER_FALLBACK_MODEL`.
+  - Map these into `api/config.py` and `.env.example`.
 
 - Client module (`api/llm/openrouter_client.py`)
   - Provide an async `OpenRouterClient` with:
@@ -145,8 +145,8 @@ Acceptance
 ## Definition of Done (Phases 6–8)
 
 - Phase 6
-  - OpenRouter client exists with model fallback, schema‑validated JSON outputs, and tests.
-  - Config/env supports OpenRouter without breaking existing OpenAI settings.
+  - OpenRouter client exists with optional model fallback, schema‑validated JSON outputs, and tests.
+  - Config/env supports OpenRouter without legacy key requirements.
 
 - Phase 7
   - LangGraph agent compiles; classifier and calculator nodes function with deterministic dish iteration; guard logic drives RAG only when needed.
@@ -158,4 +158,3 @@ Acceptance
 ---
 
 This plan follows LangGraph StateGraph patterns (typed state, node functions, conditional edges, `END`) and keeps MCP math external. It slots cleanly into the existing FastAPI surface while preserving the deterministic non‑AI path.
-

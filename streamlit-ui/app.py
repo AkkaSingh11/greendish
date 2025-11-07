@@ -4,7 +4,7 @@ from PIL import Image
 import io
 import time
 from typing import List
-import config
+import ui_config as config
 
 # Page configuration
 st.set_page_config(
@@ -44,7 +44,7 @@ st.markdown(
 
 MODE_OPTIONS = {
     "🥗 Non-AI (Keyword Pipeline)": "non-ai",
-    "🤖 AI Agent (Coming Soon)": "ai",
+    "🤖 AI Agent (LangGraph)": "ai",
 }
 READY_MODE = "non-ai"
 
@@ -151,25 +151,24 @@ def main():
         st.header("ℹ️ About")
         st.info(
             """
-            **Current Progress: Phase 5 Complete**
+            **Current Progress: Phase 8 Complete**
 
             ✅ **Phase 1:** OCR text extraction  
             ✅ **Phase 2:** Text parsing & dish extraction  
             ✅ **Phase 3:** Keyword-based vegetarian classification  
             ✅ **Phase 4:** MCP calculator integration  
-            ✅ **Phase 5:** Non-AI pipeline exposed end-to-end
+            ✅ **Phase 5:** Non-AI pipeline exposed end-to-end  
+            ✅ **Phase 6:** OpenRouter client ready (API pending wiring)  
+            ✅ **Phase 7:** LangGraph agent scaffolded  
+            ✅ **Phase 8:** RAG store seeded & Streamlit explorer added  
 
-            **Available Today (Non-AI pipeline):**
-            - Upload 1-5 menu images
-            - Extract text using Tesseract OCR
-            - Parse dishes with names and prices
-            - Classify vegetarian dishes with deterministic keywords
-            - Aggregate vegetarian totals via MCP calculator
+            **Available Today:**
+            - Upload 1-5 menu images (non-AI pipeline)
+            - Inspect RAG evidence via *Phase 8 — RAG Explorer* page
 
             **Coming Soon (AI pipeline):**
-            - Phase 6: OpenRouter LLM classification
-            - Phase 7: LangGraph agent orchestration
-            - Phase 8: RAG-backed confidence boosting
+            - Phase 9: Agent integration into `/process-menu?mode=ai`
+            - Phase 10: LangSmith tracing & analytics
             """
         )
 
@@ -219,19 +218,27 @@ def main():
             "Select processing pipeline",
             list(MODE_OPTIONS.keys()),
             index=0,
-            help="Phase 5 provides the keyword-based non-ai pipeline. The AI agent mode will arrive in Phase 6.",
+            help="Use the LangGraph agent for AI-assisted classification (requires OPENROUTER_API_KEY).",
         )
         selected_mode = MODE_OPTIONS[mode_label]
-        ai_mode_selected = selected_mode != READY_MODE
+        ai_mode_selected = selected_mode == "ai"
 
+        use_rag = False
         if ai_mode_selected:
-            st.info("🤖 AI agent mode is coming in Phase 6. Switch back to the non-AI pipeline to process menus.")
+            st.info(
+                "🤖 AI agent mode will call OpenRouter via LangGraph. Make sure the API service has "
+                "OPENROUTER_API_KEY configured and the MCP server is running."
+            )
+            use_rag = st.toggle(
+                "Use RAG fallback for low-confidence dishes",
+                value=False,
+                help="Enable Retrieval-Augmented Generation re-checks when the initial classification confidence is low.",
+            )
 
         if st.button(
             "🧠 Process Menu",
             type="primary",
             use_container_width=True,
-            disabled=ai_mode_selected,
         ):
             if health["status"] != "healthy":
                 st.error("❌ API is not available. Please start the API server first.")
@@ -249,10 +256,13 @@ def main():
 
                     # Make API request
                     start_time = time.time()
+                    params = {"mode": selected_mode}
+                    if ai_mode_selected:
+                        params["use_rag"] = use_rag
                     response = requests.post(
                         config.API_PROCESS_MENU_ENDPOINT,
                         files=files,
-                        params={"mode": selected_mode},
+                        params=params,
                         timeout=60,
                     )
                     elapsed_time = (time.time() - start_time) * 1000
@@ -261,7 +271,7 @@ def main():
                         results = response.json()
 
                         st.success(f"✅ Menu processed in {elapsed_time:.2f}ms")
-                        result_mode = results.get("mode", READY_MODE)
+                        result_mode = results.get("mode", selected_mode)
                         st.caption(f"Processing mode: {result_mode}")
 
                         # Display results

@@ -15,7 +15,7 @@ A microservices-based system centered around a LangGraph `menu-processor` agent 
 - **Image Processing**: Pillow (PIL)
 - **LLM Router**: OpenRouter API
   - Primary: `deepseek/deepseek-chat-v3.1` (cost-efficient, high-quality)
-  - Alternative: `openai/gpt-oss-120b` (configurable fallback)
+  - Optional fallback: any additional OpenRouter-supported model (blank by default)
   - Configurable from both API and Streamlit UI
 - **Agent Framework**: LangGraph (for menu-processor agent)
 - **Vector Database**: ChromaDB (local, open-source, easy setup)
@@ -81,7 +81,7 @@ Regardless of mode, the OCR pipeline standardizes menu content into a JSON array
 │  │  [Classify Dishes]                                   │   │
 │  │    ├─→ Try LLM Classification (OpenRouter)          │   │
 │  │    │   ├─ deepseek/deepseek-chat-v3.1               │   │
-│  │    │   └─ openai/gpt-oss-120b (fallback)            │   │
+│  │    │   └─ (optional fallback model)                 │   │
 │  │    │                                                 │   │
 │  │    ├─→ [Confidence Check]                           │   │
 │  │    │      ├─ High confidence → Continue             │   │
@@ -457,7 +457,7 @@ volumes:
 
 ### Phase 6: OpenRouter Integration (Day 6)
 1. Setup OpenRouter API client
-2. Configure `deepseek/deepseek-chat-v3.1` and `openai/gpt-oss-120b`
+2. Configure `deepseek/deepseek-chat-v3.1` (optional fallback additional model)
 3. Implement model selection and fallback logic
 4. Design classification prompts
 5. Add token tracking and cost monitoring
@@ -557,7 +557,7 @@ PROCESSING_MODE=ai  # Options: ai, non-ai
 OPENROUTER_API_KEY=<key>
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 OPENROUTER_PRIMARY_MODEL=deepseek/deepseek-chat-v3.1
-OPENROUTER_FALLBACK_MODEL=openai/gpt-oss-120b
+OPENROUTER_FALLBACK_MODEL=
 OPENROUTER_APP_NAME=ConvergeFi-MenuAnalyzer
 
 # LangSmith Observability

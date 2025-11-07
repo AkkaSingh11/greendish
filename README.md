@@ -6,7 +6,7 @@ A microservices-based system that processes restaurant menu photos to identify a
 
 This system combines:
 - **OCR (Tesseract)** for text extraction from menu images
-- **LLM Classification** via OpenRouter (primary `deepseek/deepseek-chat-v3.1`, fallback `openai/gpt-oss-120b`)
+- **LLM Classification** via OpenRouter (currently `deepseek/deepseek-chat-v3.1`)
 - **RAG (Retrieval-Augmented Generation)** with ChromaDB for confidence scoring
 - **MCP Server** for deterministic calculation logic
 - **LangSmith** for observability and tracing (Phase 10)
@@ -79,7 +79,7 @@ ConvergeFi/
 - **Pillow (PIL)** - Image processing
 
 ### AI/ML
-- **OpenRouter API** - unified access to `deepseek/deepseek-chat-v3.1` (primary) and `openai/gpt-oss-120b` (fallback)
+- **OpenRouter API** - access to `deepseek/deepseek-chat-v3.1`
 - **ChromaDB** - Vector database
 - **sentence-transformers** - Embeddings (all-MiniLM-L6-v2)
 
@@ -104,8 +104,8 @@ ConvergeFi/
    - Windows: Download from [GitHub](https://github.com/UB-Mannheim/tesseract/wiki)
 4. **Docker & Docker Compose** (optional, for containerized deployment)
 5. **API Keys** (optional but recommended):
-   - OpenRouter API key (for LLM classification - Phase 6+)
-   - LangSmith API key (for observability - Phase 10)
+   - OpenRouter API key (LLM classification – Phase 6+)
+   - LangSmith API key (observability – Phase 10)
 
 ### Installation
 
@@ -151,7 +151,8 @@ Update the root `.env` with your OpenRouter credentials and model preferences:
 OPENROUTER_API_KEY=your_openrouter_api_key
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 OPENROUTER_PRIMARY_MODEL=deepseek/deepseek-chat-v3.1
-OPENROUTER_FALLBACK_MODEL=openai/gpt-oss-120b
+# Optional: specify a secondary model or leave blank to disable fallback
+OPENROUTER_FALLBACK_MODEL=
 OPENROUTER_REQUEST_TIMEOUT=30
 OPENROUTER_APP_NAME=ConvergeFi-MenuAnalyzer
 ```
@@ -259,7 +260,7 @@ curl -X POST "http://localhost:8005/process-menu" \
 ```bash
 # API Service
 MCP_SERVER_URL=http://mcp-server:8001
-OPENAI_API_KEY=your_openai_key
+OPENROUTER_API_KEY=your_openrouter_key
 LANGCHAIN_TRACING_V2=true
 LANGCHAIN_API_KEY=your_langsmith_key
 MAX_IMAGES=5

@@ -9,6 +9,8 @@ from .schemas import (
     ParsedMenu,
     ProcessMenuResponse,
     MCPToolInfo,
+    RagMatchModel,
+    RagSearchResponse,
 )
 
 __all__ = [
@@ -22,4 +24,6 @@ __all__ = [
     "ErrorResponse",
     "CalculationSummary",
     "MCPToolInfo",
+    "RagMatchModel",
+    "RagSearchResponse",
 ]

@@ -9,7 +9,7 @@ import os
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import config
+import ui_config as config
 
 # Page configuration
 st.set_page_config(

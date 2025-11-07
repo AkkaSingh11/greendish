@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ConvergeFi is a microservices-based Restaurant Menu Vegetarian Dish Analyzer that processes menu photos to identify and calculate total prices of vegetarian dishes. The system uses:
 - **OCR** (Tesseract) for text extraction
 - **Structured parsing** that emits canonical `{name, price, raw_text}` JSON for each dish
-- **LLM classification** via OpenRouter (primary `deepseek/deepseek-chat-v3.1`, fallback `openai/gpt-oss-120b`), surfaced through the shared `api.llm.OpenRouterClient`
+- **LLM classification** via OpenRouter (current default `deepseek/deepseek-chat-v3.1`, optional fallback), surfaced through the shared `api.llm.OpenRouterClient`
 - **LangGraph menu-processor agent** to orchestrate dish classification, RAG fallback, and MCP tool usage
 - **RAG** (ChromaDB + sentence-transformers) for confidence bolstering when classification is uncertain
 - **MCP (Model Context Protocol)** server for deterministic price calculation logic
@@ -183,7 +183,7 @@ Key settings:
 - `MCP_SERVER_URL`: MCP server endpoint (Phase 4+)
 - `OPENROUTER_API_KEY`: For LLM classification (Phase 5+)
 - `OPENROUTER_PRIMARY_MODEL`: Default `deepseek/deepseek-chat-v3.1`
-- `OPENROUTER_FALLBACK_MODEL`: Default `openai/gpt-oss-120b`
+- `OPENROUTER_FALLBACK_MODEL`: Secondary model identifier (optional; blank disables fallback)
 - `LANGCHAIN_TRACING_V2`: Enable LangSmith tracing (Phase 7+)
 - `CONFIDENCE_THRESHOLD`: Classification confidence threshold (default: 0.7)
 
@@ -289,7 +289,7 @@ Use `test_ocr.py` for quick validation that OCR is working. Full pytest suite wi
 
 When implementing LLM classification:
 1. Always implement keyword fallback first (Phase 3)
-2. Route requests through OpenRouter using `deepseek/deepseek-chat-v3.1` as the default model and `openai/gpt-oss-120b` as fallback (configurable via env / Streamlit UI)
+2. Route requests through OpenRouter using `deepseek/deepseek-chat-v3.1` as the default model (optional fallback configurable via env / Streamlit UI)
 3. LLM responses must be strict JSON: `{is_vegetarian: bool, confidence: float, reasoning: str}`
 4. Use LangGraph state to decide when to trigger RAG lookups and re-classify
 5. Track token usage and costs via LangSmith

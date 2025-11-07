@@ -1,0 +1,143 @@
+[
+  {
+    "name": "Margherita Pizza",
+    "category": "vegetarian",
+    "description": "Classic Neapolitan pizza with tomato, mozzarella, basil, and olive oil. No meat or fish ingredients."
+  },
+  {
+    "name": "Caprese Salad",
+    "category": "vegetarian",
+    "description": "Fresh tomato slices layered with mozzarella, basil, and balsamic drizzle."
+  },
+  {
+    "name": "Paneer Tikka",
+    "category": "vegetarian",
+    "description": "Skewered paneer cubes marinated in yogurt and spices, grilled with peppers and onions."
+  },
+  {
+    "name": "Vegetable Stir Fry",
+    "category": "vegetarian",
+    "description": "Assorted vegetables tossed in soy-garlic sauce over noodles or rice. No animal protein."
+  },
+  {
+    "name": "Falafel Wrap",
+    "category": "vegetarian",
+    "description": "Ground chickpea patties wrapped with tahini, lettuce, cucumber, and tomato."
+  },
+  {
+    "name": "Eggplant Parmesan",
+    "category": "vegetarian",
+    "description": "Breaded eggplant layered with marinara and mozzarella, baked until bubbly."
+  },
+  {
+    "name": "Spinach Artichoke Dip",
+    "category": "vegetarian",
+    "description": "Creamy dip of spinach, artichokes, cream cheese, and parmesan, served with bread."
+  },
+  {
+    "name": "Mushroom Risotto",
+    "category": "vegetarian",
+    "description": "Creamy arborio rice cooked with vegetable stock, mushrooms, and parmesan."
+  },
+  {
+    "name": "Chana Masala",
+    "category": "vegetarian",
+    "description": "North Indian chickpea curry simmered with tomatoes, onion, and garam masala."
+  },
+  {
+    "name": "Greek Salad",
+    "category": "vegetarian",
+    "description": "Crisp lettuce, cucumber, tomato, olives, and feta with lemon-oregano dressing."
+  },
+  {
+    "name": "Vegetable Dumplings",
+    "category": "vegetarian",
+    "description": "Steamed dumplings stuffed with cabbage, carrot, mushroom, ginger, and garlic."
+  },
+  {
+    "name": "Tofu Pad Thai",
+    "category": "vegetarian",
+    "description": "Rice noodles stir-fried with tamarind sauce, tofu, peanuts, bean sprouts, and lime."
+  },
+  {
+    "name": "Garden Burger",
+    "category": "vegetarian",
+    "description": "Vegetable-based burger patty made from beans, grains, and mushrooms with lettuce and tomato."
+  },
+  {
+    "name": "Lentil Soup",
+    "category": "vegetarian",
+    "description": "Hearty soup with lentils, carrots, celery, and tomato cooked in vegetable broth."
+  },
+  {
+    "name": "Avocado Toast",
+    "category": "vegetarian",
+    "description": "Grilled sourdough topped with smashed avocado, lemon, chili flakes, and microgreens."
+  },
+  {
+    "name": "Chicken Alfredo",
+    "category": "non-vegetarian",
+    "description": "Fettuccine pasta tossed in cream sauce with grilled chicken breast slices."
+  },
+  {
+    "name": "Beef Burger",
+    "category": "non-vegetarian",
+    "description": "Grilled beef patty with cheddar, lettuce, tomato, and pickles on a brioche bun."
+  },
+  {
+    "name": "Shrimp Scampi",
+    "category": "non-vegetarian",
+    "description": "Garlic butter sautéed shrimp served over linguine with white wine sauce."
+  },
+  {
+    "name": "Pepperoni Pizza",
+    "category": "non-vegetarian",
+    "description": "Tomato sauce, mozzarella cheese, and cured pepperoni slices baked on pizza dough."
+  },
+  {
+    "name": "BBQ Pulled Pork Sandwich",
+    "category": "non-vegetarian",
+    "description": "Slow-cooked shredded pork tossed in barbecue sauce, served with slaw on a bun."
+  },
+  {
+    "name": "Salmon Teriyaki",
+    "category": "non-vegetarian",
+    "description": "Pan-seared salmon glazed with sweet soy teriyaki sauce, served with rice."
+  },
+  {
+    "name": "Chicken Caesar Salad",
+    "category": "non-vegetarian",
+    "description": "Romaine lettuce with grilled chicken, parmesan, croutons, and anchovy dressing."
+  },
+  {
+    "name": "Lamb Gyro",
+    "category": "non-vegetarian",
+    "description": "Sliced roasted lamb wrapped in pita with tzatziki, tomato, and onion."
+  },
+  {
+    "name": "Tuna Sandwich",
+    "category": "non-vegetarian",
+    "description": "Albacore tuna salad with mayo and celery on toasted bread or croissant."
+  },
+  {
+    "name": "Bacon Omelette",
+    "category": "non-vegetarian",
+    "description": "Fluffy eggs folded with smoked bacon, cheddar cheese, and scallions."
+  },
+  {
+    "name": "Seafood Paella",
+    "category": "non-vegetarian",
+    "description": "Spanish saffron rice cooked with shrimp, mussels, calamari, and chorizo."
+  },
+  {
+    "name": "Turkey Club",
+    "category": "non-vegetarian",
+    "description": "Triple-decker sandwich with roasted turkey, bacon, lettuce, tomato, and mayo."
+  },
+  {
+    "name": "Ham and Cheese Croissant",
+    "category": "non-vegetarian",
+    "description": "Buttery croissant stuffed with smoked ham and melted Swiss cheese."
+  }
+]
+

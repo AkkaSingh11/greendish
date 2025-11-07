@@ -103,4 +103,22 @@ class MCPToolInfo(BaseModel):
     output_schema: Optional[Dict[str, Any]] = None
 
 
+class RagMatchModel(BaseModel):
+    """Single RAG match returned from the retrieval service."""
+
+    name: str
+    category: str
+    description: str
+    score: float
+    chunk_index: Optional[int] = None
+
+
+class RagSearchResponse(BaseModel):
+    """Response model for RAG search endpoint."""
+
+    query: str
+    top_k: int
+    matches: List[RagMatchModel]
+
+
 ProcessMenuResponse.model_rebuild()

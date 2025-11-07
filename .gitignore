@@ -39,6 +39,9 @@ venv.bak/
 *~
 .DS_Store
 
+# Generated vector store
+api/rag_db/
+
 # Environment variables
 .env
 .env.local

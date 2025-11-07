@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
@@ -5,7 +6,7 @@ import logging
 
 from config import settings
 from models import HealthResponse
-from routers import menu_router
+from routers import menu_router, rag_router
 
 # Configure logging
 logging.basicConfig(
@@ -35,6 +36,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(menu_router)
+app.include_router(rag_router)
 
 
 @app.get("/", include_in_schema=False)
@@ -75,9 +77,31 @@ async def health_check():
     )
 
 
+def configure_langsmith() -> None:
+    """Configure LangSmith tracing environment if enabled."""
+    if not settings.langchain_tracing_v2:
+        logger.info("LangSmith tracing disabled (LANGCHAIN_TRACING_V2=false).")
+        return
+
+    if not settings.langchain_api_key:
+        logger.warning("LangSmith tracing requested but LANGCHAIN_API_KEY is not configured.")
+        return
+
+    os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
+    os.environ.setdefault("LANGCHAIN_API_KEY", settings.langchain_api_key)
+    if settings.langchain_project:
+        os.environ.setdefault("LANGCHAIN_PROJECT", settings.langchain_project)
+        project_display = settings.langchain_project
+    else:
+        project_display = "(default)"
+    os.environ.setdefault("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
+    logger.info("LangSmith tracing enabled for project %s.", project_display)
+
+
 @app.on_event("startup")
 async def startup_event():
     """Run on application startup."""
+    configure_langsmith()
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
     logger.info(f"Debug mode: {settings.debug}")
     logger.info(f"Max images per request: {settings.max_images}")

@@ -9,6 +9,8 @@ API_HEALTH_ENDPOINT = f"{API_BASE_URL}/health"
 API_EXTRACT_TEXT_ENDPOINT = f"{API_BASE_URL}/api/v1/extract-text"
 API_PROCESS_MENU_ENDPOINT = f"{API_BASE_URL}/api/v1/process-menu"
 API_MCP_TOOLS_ENDPOINT = f"{API_BASE_URL}/api/v1/mcp/tools"
+API_RAG_SEARCH_ENDPOINT = f"{API_BASE_URL}/api/v1/rag/search"
+API_RAG_RESEED_ENDPOINT = f"{API_BASE_URL}/api/v1/rag/reseed"
 
 # MCP Server Configuration
 MCP_BASE_URL = os.getenv("MCP_BASE_URL", "http://localhost:8001")

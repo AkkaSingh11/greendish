@@ -1,8 +1,18 @@
 from pathlib import Path
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
+from dotenv import load_dotenv
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 BASE_DIR = Path(__file__).resolve().parent
+ROOT_ENV = BASE_DIR.parent / ".env"
+SERVICE_ENV = BASE_DIR / ".env"
+
+# Load environment variables from repo root first, then override with service-specific values
+if ROOT_ENV.exists():
+    load_dotenv(ROOT_ENV, override=False)
+if SERVICE_ENV.exists():
+    load_dotenv(SERVICE_ENV, override=True)
 
 
 class Settings(BaseSettings):
@@ -26,19 +36,14 @@ class Settings(BaseSettings):
     mcp_server_url: str = "http://localhost:8001"
     mcp_timeout: int = 30
 
-    # LLM Settings
-    openai_api_key: Optional[str] = None
-    openai_model: str = "gpt-4o-mini"
-    max_tokens: int = 500
-    temperature: float = 0.3
-
     # OpenRouter Settings
     openrouter_api_key: Optional[str] = None
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_primary_model: str = "deepseek/deepseek-chat-v3.1"
-    openrouter_fallback_model: Optional[str] = "openai/gpt-oss-120b"
+    openrouter_fallback_model: Optional[str] = None
     openrouter_request_timeout: int = 30
     openrouter_app_name: str = "ConvergeFi-Menu Analyzer"
+    openrouter_referer: Optional[str] = None
 
     # Classification Settings
     confidence_threshold: float = 0.7
@@ -48,13 +53,21 @@ class Settings(BaseSettings):
     keyword_fuzzy_threshold: float = 0.82
     keyword_max_hint_bonus: float = 0.15
 
+    # RAG Settings
+    rag_enabled: bool = True
+    rag_db_path: str = str(BASE_DIR / "rag_db")
+    rag_collection_name: str = "vegetarian_dishes"
+    rag_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
+    rag_seed_path: str = str(BASE_DIR / "data/vegetarian_db.json")
+    rag_top_k: int = 3
+
     # LangSmith Settings
     langchain_tracing_v2: bool = False
     langchain_api_key: Optional[str] = None
     langchain_project: str = "convergefi-menu-analyzer"
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(SERVICE_ENV) if SERVICE_ENV.exists() else None,
         case_sensitive=False,
         extra="ignore",
     )

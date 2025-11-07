@@ -11,7 +11,10 @@ from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Type, Union
 import httpx
 from pydantic import BaseModel, ValidationError
 
-from ..config import settings
+try:  # Lazy import to support both intra-package and external consumers
+    from config import settings  # type: ignore
+except ImportError:  # pragma: no cover - streamlit/imported contexts
+    from api.config import settings  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -243,6 +246,8 @@ class OpenRouterClient:
         }
         if self.app_name:
             headers["X-Title"] = self.app_name
+        if settings.openrouter_referer:
+            headers["HTTP-Referer"] = settings.openrouter_referer
         return headers
 
     def _candidate_models(self, explicit_model: Optional[str]) -> Tuple[str, ...]:
