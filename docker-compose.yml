@@ -1,54 +1,116 @@
 version: '3.8'
 
+networks:
+  greendish-network:
+    driver: bridge
+
 services:
+  # MCP Server Service (starts first)
+  mcp-server:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile
+    container_name: greendish-mcp
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    environment:
+      - CONFIDENCE_THRESHOLD=${CONFIDENCE_THRESHOLD:-0.4}
+    volumes:
+      - ./mcp-server:/app
+    networks:
+      - greendish-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
   # REST API Service
   api:
     build:
       context: ./api
       dockerfile: Dockerfile
-    container_name: convergefi-api
+    container_name: greendish-api
     ports:
       - "8005:8005"
+    env_file:
+      - .env
     environment:
-      - DEBUG=true
-      - MAX_IMAGES=5
-      - OCR_LANG=eng
+      # Core settings
+      - DEBUG=${DEBUG:-false}
+      - MAX_IMAGES=${MAX_IMAGES:-5}
+      - OCR_LANG=${OCR_LANG:-eng}
       - MCP_SERVER_URL=http://mcp-server:8001
+      - CONFIDENCE_THRESHOLD=${CONFIDENCE_THRESHOLD:-0.4}
+
+      # Groq LLM (Primary)
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_BASE_URL=${GROQ_BASE_URL:-https://api.groq.com/openai/v1}
+      - GROQ_PRIMARY_MODEL=${GROQ_PRIMARY_MODEL:-openai/gpt-oss-20b}
+      - GROQ_REQUEST_TIMEOUT=${GROQ_REQUEST_TIMEOUT:-30}
+
+      # OpenRouter LLM (Fallback)
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      - OPENROUTER_PRIMARY_MODEL=${OPENROUTER_PRIMARY_MODEL:-deepseek/deepseek-chat-v3.1}
+      - OPENROUTER_FALLBACK_MODEL=${OPENROUTER_FALLBACK_MODEL:-}
+      - OPENROUTER_REQUEST_TIMEOUT=${OPENROUTER_REQUEST_TIMEOUT:-30}
+      - OPENROUTER_APP_NAME=${OPENROUTER_APP_NAME:-GreenDish-MenuAnalyzer}
+
+      # LangSmith Observability
+      - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
+      - LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY}
+      - LANGCHAIN_PROJECT=${LANGCHAIN_PROJECT:-greendish}
     volumes:
       - ./api:/app
+      - ./api/rag_db:/app/rag_db  # Persistent ChromaDB storage
+    depends_on:
+      mcp-server:
+        condition: service_healthy
+    networks:
+      - greendish-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 20s
 
   # Streamlit UI Service
   streamlit:
     build:
       context: ./streamlit-ui
       dockerfile: Dockerfile
-    container_name: convergefi-streamlit
+    container_name: greendish-streamlit
     ports:
       - "8501:8501"
+    env_file:
+      - .env
     environment:
       - API_BASE_URL=http://api:8005
+      # Pass through LLM keys for chat playground
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_BASE_URL=${GROQ_BASE_URL:-https://api.groq.com/openai/v1}
+      - GROQ_PRIMARY_MODEL=${GROQ_PRIMARY_MODEL:-openai/gpt-oss-20b}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      - OPENROUTER_PRIMARY_MODEL=${OPENROUTER_PRIMARY_MODEL:-deepseek/deepseek-chat-v3.1}
     volumes:
       - ./streamlit-ui:/app
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    networks:
+      - greendish-network
     restart: unless-stopped
-
-  mcp-server:
-    build:
-      context: ./mcp-server
-      dockerfile: Dockerfile
-    container_name: convergefi-mcp
-    ports:
-      - "8001:8001"
-    environment:
-      - CONFIDENCE_THRESHOLD=0.7
-    volumes:
-      - ./mcp-server:/app
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
