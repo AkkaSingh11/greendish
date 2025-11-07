@@ -13,10 +13,10 @@ A microservices-based system centered around a LangGraph `menu-processor` agent 
 ### Key Libraries & Tools
 - **OCR**: Tesseract OCR + `pytesseract`
 - **Image Processing**: Pillow (PIL)
-- **LLM Router**: OpenRouter API
-  - Primary: `deepseek/deepseek-chat-v3.1` (cost-efficient, high-quality)
-  - Optional fallback: any additional OpenRouter-supported model (blank by default)
-  - Configurable from both API and Streamlit UI
+- **LLM Router**: Groq API (primary) with OpenRouter fallback
+  - Groq default: `openai/gpt-oss-20b` (fast OSS frontier model)
+  - OpenRouter fallback: `deepseek/deepseek-chat-v3.1` or any OpenRouter-supported model
+  - Provider/model choices configurable from both API and Streamlit UI
 - **Agent Framework**: LangGraph (for menu-processor agent)
 - **Vector Database**: ChromaDB (local, open-source, easy setup)
 - **Embeddings**: `sentence-transformers` (all-MiniLM-L6-v2 model)
@@ -31,7 +31,7 @@ A microservices-based system centered around a LangGraph `menu-processor` agent 
 - LangSmith free tier provides sufficient tracing for development
 - FastAPI offers excellent performance and automatic documentation
 - MCP is a modern standard for LLM tool integration
-- OpenRouter provides unified API access to multiple LLM providers
+- Groq delivers high-throughput OSS models while OpenRouter still provides unified fallback access
 - LangGraph enables complex, stateful agent workflows with graph-based orchestration
 - Dual approach (AI agent + non-AI keyword matching) provides flexibility and cost control
 
@@ -79,7 +79,7 @@ Regardless of mode, the OCR pipeline standardizes menu content into a JSON array
 │  │  START                                               │   │
 │  │    ↓                                                 │   │
 │  │  [Classify Dishes]                                   │   │
-│  │    ├─→ Try LLM Classification (OpenRouter)          │   │
+│  │    ├─→ Try LLM Classification (Groq → OpenRouter)   │   │
 │  │    │   ├─ deepseek/deepseek-chat-v3.1               │   │
 │  │    │   └─ (optional fallback model)                 │   │
 │  │    │                                                 │   │
@@ -187,11 +187,13 @@ api/
 │   │   └── calculator_node.py  # MCP calculation node
 │   └── state.py                # Agent state definition
 ├── llm/
-│   └── openrouter_client.py    # OpenRouter API wrapper
+│   ├── groq_client.py          # Groq API wrapper (primary)
+│   ├── openrouter_client.py    # OpenRouter API wrapper (fallback)
+│   └── router_client.py        # Provider router (Groq → OpenRouter)
 ├── models/
 │   ├── request.py              # Pydantic request models
 │   └── response.py             # Pydantic response models
-└── config.py                   # Shared configuration (OpenRouter models for API & Streamlit)
+└── config.py                   # Shared configuration (Groq/OpenRouter env + models)
 ```
 
 ### 2. LangGraph Menu-Processor Agent (`/api/agents`)
@@ -538,8 +540,8 @@ volumes:
 - **Sentence Transformers**: Free, runs locally
 - **LangSmith**: Free tier (5,000 traces/month, sufficient for dev/testing)
 - **LLM API**:
-  - OpenAI GPT-4o-mini: ~$0.15/1M input tokens, $0.60/1M output tokens
-  - Anthropic Claude Haiku: ~$0.25/1M input tokens, $1.25/1M output tokens
+  - Groq GPT-OSS-20B: ~$0.59/1M input tokens, ~$0.79/1M output tokens (subject to Groq pricing updates)
+  - OpenRouter DeepSeek (fallback): ~$0.14/1K input tokens, ~$0.28/1K output tokens
   - Estimate: ~50-100 tokens per dish → ~$0.01 per menu
 - **Hosting**: Docker runs locally, $0
 
@@ -553,7 +555,13 @@ volumes:
 MCP_SERVER_URL=http://mcp-server:8001
 PROCESSING_MODE=ai  # Options: ai, non-ai
 
-# OpenRouter Configuration
+# Groq Configuration
+GROQ_API_KEY=<key>
+GROQ_BASE_URL=https://api.groq.com/openai/v1
+GROQ_PRIMARY_MODEL=openai/gpt-oss-20b
+GROQ_REQUEST_TIMEOUT=30
+
+# OpenRouter Configuration (fallback)
 OPENROUTER_API_KEY=<key>
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 OPENROUTER_PRIMARY_MODEL=deepseek/deepseek-chat-v3.1
@@ -680,4 +688,4 @@ KEYWORD_DB_PATH=/app/data/vegetarian_keywords.json
 ---
 
 ## Summary
-This solution delivers a production-ready, microservices-based system built around a LangGraph `menu-processor` agent that accepts structured `{name, price}` dish JSON, delegates vegetarian classification to an OpenRouter-powered agent with RAG fallback, and offloads all price summations to an MCP calculator service. The architecture remains extensible, cost-aware, and observable, while the non-LLM keyword mode guarantees a deterministic alternative that still leverages the shared MCP tooling.
+This solution delivers a production-ready, microservices-based system built around a LangGraph `menu-processor` agent that accepts structured `{name, price}` dish JSON, delegates vegetarian classification to a Groq-powered agent (with OpenRouter fallback) plus RAG, and offloads all price summations to an MCP calculator service. The architecture remains extensible, cost-aware, and observable, while the non-LLM keyword mode guarantees a deterministic alternative that still leverages the shared MCP tooling.

@@ -10,12 +10,12 @@ if str(API_ROOT) not in sys.path:
 import pytest
 
 from agents import MenuProcessorAgent  # noqa: E402
-from llm.openrouter_client import OpenRouterResponse  # noqa: E402
+from llm import OpenRouterResponse  # noqa: E402
 from models import Dish  # noqa: E402
 from services.rag_service import RAGService  # noqa: E402
 
 
-class StubOpenRouterClient:
+class StubLLMClient:
     """Deterministic client that requires RAG evidence to boost confidence."""
 
     def __init__(self) -> None:
@@ -62,7 +62,7 @@ async def test_menu_processor_agent_uses_rag_for_uncertain_dish():
         rag_service.reseed(force=True)
 
         agent = MenuProcessorAgent(
-            openrouter_client=StubOpenRouterClient(),
+            llm_client=StubLLMClient(),
             rag_service=rag_service,
         )
 

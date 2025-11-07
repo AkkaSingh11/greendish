@@ -8,6 +8,7 @@ This document captures the functionality delivered across Phases 6 through 9, th
 - Added a resilient async OpenRouter client (`api/llm/openrouter_client.py`) with automatic primary/fallback model handling, schema validation, telemetry capture, and error surfacing.
 - Extended configuration to carry OpenRouter credentials and request tuning knobs (`api/config.py`).
 - Established dependency pins for the LangChain/LangGraph stack in `api/pyproject.toml`.
+- 2025 update: introduced a Groq client + router (`api/llm/groq_client.py`, `api/llm/router_client.py`) so Groq (`openai/gpt-oss-20b`) is the primary provider with OpenRouter as fallback.
 
 ## Phase 7 – LangGraph Agent Setup
 - Introduced the LangGraph agent package (`api/agents/`) containing:
@@ -57,11 +58,12 @@ All suites passed (8 tests) with only expected third-party warnings about `pytho
 - `streamlit-ui/app.py` / `streamlit-ui/pages/3_RAG_Retrieval.py` / `streamlit-ui/config.py` – UI updates for AI mode selection and RAG exploration.
 - Tests: `tests/api/test_menu_modes.py`, `tests/api/test_menu_processor_agent.py`, `tests/api/test_rag_router.py`.
 - Dependency pins: `api/pyproject.toml`.
+- 2025 update: added Groq router plumbing and Streamlit LLM chat refresh (`streamlit-ui/pages/1_LLM_Chat.py`).
 
 ---
 
 ## Known Issues & Considerations
-- **OpenRouter credentials required** – `OPENROUTER_API_KEY` must be present; the AI path returns HTTP 503 if missing or misconfigured.
+- **LLM credentials required** – provide `GROQ_API_KEY` for primary coverage (or `OPENROUTER_API_KEY` as fallback). The AI path returns HTTP 503 if neither provider is configured or both initialization attempts fail.
 - **External services** – OpenRouter and LangSmith add network dependencies; transient failures are surfaced as 502 responses.
 - **RAG persistence** – the Chroma DB is created on demand; ensure the process has write access to `settings.rag_db_path` in deployed environments.
 - **Keyword classifier warnings** – existing warnings from legacy Pydantic usage remain (tracked for later cleanup).
@@ -73,4 +75,3 @@ All suites passed (8 tests) with only expected third-party warnings about `pytho
 2. **Hardening** – add more integration tests covering full AI end-to-end execution (mocking OpenRouter & Chroma) and regression suites for the non-AI flow.
 3. **Observability** – add structured logging for agent steps and optional metrics export.
 4. **Deployment readiness** – ensure environment provisioning includes OpenRouter key management, Chroma storage, and MCP service orchestration.
-

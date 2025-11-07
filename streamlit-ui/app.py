@@ -158,7 +158,7 @@ def main():
             ✅ **Phase 3:** Keyword-based vegetarian classification  
             ✅ **Phase 4:** MCP calculator integration  
             ✅ **Phase 5:** Non-AI pipeline exposed end-to-end  
-            ✅ **Phase 6:** OpenRouter client ready (API pending wiring)  
+            ✅ **Phase 6:** Groq/OpenRouter LLM router ready (API pending wiring)  
             ✅ **Phase 7:** LangGraph agent scaffolded  
             ✅ **Phase 8:** RAG store seeded & Streamlit explorer added  
 
@@ -218,7 +218,7 @@ def main():
             "Select processing pipeline",
             list(MODE_OPTIONS.keys()),
             index=0,
-            help="Use the LangGraph agent for AI-assisted classification (requires OPENROUTER_API_KEY).",
+            help="Use the LangGraph agent for AI-assisted classification (requires GROQ_API_KEY or OPENROUTER_API_KEY).",
         )
         selected_mode = MODE_OPTIONS[mode_label]
         ai_mode_selected = selected_mode == "ai"
@@ -226,8 +226,8 @@ def main():
         use_rag = False
         if ai_mode_selected:
             st.info(
-                "🤖 AI agent mode will call OpenRouter via LangGraph. Make sure the API service has "
-                "OPENROUTER_API_KEY configured and the MCP server is running."
+                "🤖 AI agent mode will call Groq via LangGraph (falling back to OpenRouter if needed). "
+                "Ensure the API service has GROQ_API_KEY (preferred) or OPENROUTER_API_KEY configured and the MCP server is running."
             )
             use_rag = st.toggle(
                 "Use RAG fallback for low-confidence dishes",

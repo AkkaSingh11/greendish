@@ -1,11 +1,11 @@
-"""Streamlit page to chat with configured OpenRouter models."""
+"""Streamlit page to chat with Groq (primary) and OpenRouter (fallback) models."""
 
 from __future__ import annotations
 
 import asyncio
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Mapping, Optional
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -15,16 +15,17 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(REPO_ROOT / ".env")
 if str(REPO_ROOT) not in sys.path:
     sys.path.append(str(REPO_ROOT))
+API_ROOT = REPO_ROOT / "api"
+if str(API_ROOT) not in sys.path:
+    sys.path.append(str(API_ROOT))
 
 from api.config import settings  # noqa: E402  pylint: disable=wrong-import-position
-from api.llm import OpenRouterClient, OpenRouterError  # noqa: E402  pylint: disable=wrong-import-position
+from api.llm import GroqClient, OpenRouterClient, OpenRouterError  # noqa: E402  pylint: disable=wrong-import-position
 
 
-st.set_page_config(page_title="OpenRouter Chat Playground", page_icon="💬")
-st.title("💬 OpenRouter Chat Playground")
-st.caption(
-    "Interact with the configured OpenRouter models to compare outputs and sanity-check prompts."
-)
+st.set_page_config(page_title="LLM Chat Playground", page_icon="💬")
+st.title("💬 LLM Chat Playground")
+st.caption("Compare Groq (primary) and OpenRouter (fallback) outputs with the same prompt.")
 
 
 def _rerun_app() -> None:
@@ -37,29 +38,57 @@ def _rerun_app() -> None:
 
 
 @st.cache_resource(show_spinner=False)
-def get_openrouter_client() -> OpenRouterClient:
-    """Instantiate and cache the OpenRouter client for the Streamlit session."""
+def get_llm_clients() -> Mapping[str, Optional[object]]:
+    """Instantiate available LLM clients once per session."""
 
-    return OpenRouterClient()
+    groq_client: Optional[GroqClient] = None
+    openrouter_client: Optional[OpenRouterClient] = None
+
+    if settings.groq_api_key:
+        try:
+            groq_client = GroqClient()
+        except OpenRouterError as exc:
+            st.warning(f"Groq configuration issue: {exc}")
+
+    if settings.openrouter_api_key:
+        try:
+            openrouter_client = OpenRouterClient()
+        except OpenRouterError as exc:
+            st.warning(f"OpenRouter configuration issue: {exc}")
+
+    return {"groq": groq_client, "openrouter": openrouter_client}
 
 
-try:
-    client = get_openrouter_client()
-except OpenRouterError as exc:
-    st.error(f"OpenRouter configuration error: {exc}")
+clients = get_llm_clients()
+available_providers: Dict[str, object] = {
+    "Groq": clients["groq"],
+    "OpenRouter": clients["openrouter"],
+}
+available_providers = {name: client for name, client in available_providers.items() if client}
+
+if not available_providers:
+    st.error("No LLM providers are configured. Set GROQ_API_KEY or OPENROUTER_API_KEY in your environment.")
     st.stop()
 
 
-MODEL_OPTIONS: Dict[str, str] = {
-    f"Primary – {settings.openrouter_primary_model}": settings.openrouter_primary_model
-}
-if settings.openrouter_fallback_model:
-    MODEL_OPTIONS[f"Fallback – {settings.openrouter_fallback_model}"] = settings.openrouter_fallback_model
+def _provider_models(provider: str) -> Dict[str, str]:
+    if provider == "Groq":
+        return {
+            f"Groq · {settings.groq_primary_model}": settings.groq_primary_model,
+        }
+    models = {
+        f"Primary · {settings.openrouter_primary_model}": settings.openrouter_primary_model,
+    }
+    if settings.openrouter_fallback_model:
+        models[f"Fallback · {settings.openrouter_fallback_model}"] = settings.openrouter_fallback_model
+    return models
 
 
 with st.sidebar:
     st.header("⚙️ Chat Settings")
-    model_label = st.selectbox("Model", list(MODEL_OPTIONS.keys()))
+    provider = st.selectbox("Provider", list(available_providers.keys()))
+    provider_models = _provider_models(provider)
+    model_label = st.selectbox("Model", list(provider_models.keys()))
     temperature = st.slider("Temperature", min_value=0.0, max_value=1.5, value=0.3, step=0.05)
     max_tokens_option = st.number_input(
         "Max tokens (0 = auto)", min_value=0, max_value=4096, value=400, step=50
@@ -71,24 +100,26 @@ with st.sidebar:
         height=80,
     ).strip()
 
+    history_key = f"{provider}:{provider_models[model_label]}"
     if st.button("Clear conversation", use_container_width=True):
         st.session_state.setdefault("chat_history", {})
-        st.session_state["chat_history"].pop(MODEL_OPTIONS[model_label], None)
+        st.session_state["chat_history"].pop(history_key, None)
         _rerun_app()
 
 
-selected_model = MODEL_OPTIONS[model_label]
+selected_model = _provider_models(provider)[model_label]
+history_id = f"{provider}:{selected_model}"
 
 
-def ensure_history(model_name: str) -> List[Dict[str, Any]]:
-    """Retrieve (or initialize) the chat history for a specific model."""
+def ensure_history(key: str) -> List[Dict[str, Any]]:
+    """Retrieve (or initialize) the chat history for a specific provider/model pair."""
 
     st.session_state.setdefault("chat_history", {})
-    history = st.session_state["chat_history"].setdefault(model_name, [])
+    history = st.session_state["chat_history"].setdefault(key, [])
     return history
 
 
-history = ensure_history(selected_model)
+history = ensure_history(history_id)
 
 
 def render_history(messages: List[Dict[str, Any]]) -> None:
@@ -102,8 +133,8 @@ def render_history(messages: List[Dict[str, Any]]) -> None:
             st.markdown(content)
             if metadata and role == "assistant":
                 st.caption(
-                    f"Model: {metadata.get('model')} · Tokens: {metadata.get('total_tokens')} · "
-                    f"Latency: {metadata.get('latency', 0.0):.2f}s"
+                    f"Provider: {metadata.get('provider')} · Model: {metadata.get('model')} · "
+                    f"Tokens: {metadata.get('total_tokens')} · Latency: {metadata.get('latency', 0.0):.2f}s"
                 )
 
 
@@ -117,7 +148,7 @@ def run_async(coro):
 
 
 def build_message_payload(messages: List[Dict[str, Any]]) -> List[Dict[str, str]]:
-    """Convert stored history into the OpenRouter message format."""
+    """Convert stored history into the chat completion message format."""
 
     return [
         {"role": msg["role"], "content": msg["content"]}
@@ -135,6 +166,7 @@ if user_input:
     if system_prompt:
         message_payload.insert(0, {"role": "system", "content": system_prompt})
 
+    client = available_providers[provider]
     try:
         response = run_async(
             client.chat(
@@ -144,14 +176,14 @@ if user_input:
                 max_tokens=max_tokens,
             )
         )
-    except OpenRouterError as exc:  # pragma: no cover - network errors
+    except OpenRouterError as exc:  # pragma: no cover - provider/network errors
         st.session_state.setdefault("chat_errors", [])
-        st.session_state["chat_errors"].append(str(exc))
+        st.session_state["chat_errors"].append(f"{provider}: {exc}")
         history.append(
             {
                 "role": "assistant",
-                "content": f"⚠️ Request failed: {exc}",
-                "metadata": {"model": selected_model, "total_tokens": 0, "latency": 0.0},
+                "content": f"⚠️ {provider} request failed: {exc}",
+                "metadata": {"provider": provider, "model": selected_model, "total_tokens": 0, "latency": 0.0},
             }
         )
     else:
@@ -160,6 +192,7 @@ if user_input:
                 "role": "assistant",
                 "content": response.data,
                 "metadata": {
+                    "provider": provider,
                     "model": response.model,
                     "total_tokens": response.total_tokens,
                     "latency": response.latency,

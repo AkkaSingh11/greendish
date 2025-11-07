@@ -6,11 +6,11 @@ A microservices-based system that processes restaurant menu photos to identify a
 
 This system combines:
 - **OCR (Tesseract)** for text extraction from menu images
-- **LLM Classification** via OpenRouter (currently `deepseek/deepseek-chat-v3.1`)
+- **LLM Classification** via Groq (`openai/gpt-oss-20b` by default) with OpenRouter fallback
 - **RAG (Retrieval-Augmented Generation)** with ChromaDB for confidence scoring
 - **MCP Server** for deterministic calculation logic
 - **LangSmith** for observability and tracing (Phase 10)
-- **Streamlit UI** for testing, including a dedicated OpenRouter chat playground
+- **Streamlit UI** for testing, including a dedicated Groq/OpenRouter chat playground
 
 ## System Architecture
 
@@ -79,7 +79,7 @@ ConvergeFi/
 - **Pillow (PIL)** - Image processing
 
 ### AI/ML
-- **OpenRouter API** - access to `deepseek/deepseek-chat-v3.1`
+- **Groq API** - primary access to `openai/gpt-oss-20b` (OpenRouter acts as fallback)
 - **ChromaDB** - Vector database
 - **sentence-transformers** - Embeddings (all-MiniLM-L6-v2)
 
@@ -104,7 +104,8 @@ ConvergeFi/
    - Windows: Download from [GitHub](https://github.com/UB-Mannheim/tesseract/wiki)
 4. **Docker & Docker Compose** (optional, for containerized deployment)
 5. **API Keys** (optional but recommended):
-   - OpenRouter API key (LLM classification – Phase 6+)
+   - Groq API key (primary LLM classification)
+   - OpenRouter API key (fallback provider)
    - LangSmith API key (observability – Phase 10)
 
 ### Installation
@@ -131,7 +132,7 @@ uv pip install -r pyproject.toml
 cd ../mcp-server
 uv pip install -r pyproject.toml
 
-# For Streamlit UI (includes OpenRouter chat playground)
+# For Streamlit UI (includes Groq/OpenRouter chat playground)
 cd ../streamlit-ui
 uv pip install -r pyproject.toml
 ```
@@ -145,13 +146,19 @@ uv sync
 
 4. **Configure LLM settings**
 
-Update the root `.env` with your OpenRouter credentials and model preferences:
+Update the root `.env` with Groq credentials (primary) and optional OpenRouter fallback:
 
 ```env
+# Groq (primary)
+GROQ_API_KEY=your_groq_api_key
+GROQ_BASE_URL=https://api.groq.com/openai/v1
+GROQ_PRIMARY_MODEL=openai/gpt-oss-20b
+GROQ_REQUEST_TIMEOUT=30
+
+# OpenRouter (fallback)
 OPENROUTER_API_KEY=your_openrouter_api_key
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 OPENROUTER_PRIMARY_MODEL=deepseek/deepseek-chat-v3.1
-# Optional: specify a secondary model or leave blank to disable fallback
 OPENROUTER_FALLBACK_MODEL=
 OPENROUTER_REQUEST_TIMEOUT=30
 OPENROUTER_APP_NAME=ConvergeFi-MenuAnalyzer
@@ -183,7 +190,7 @@ streamlit run app.py
 
 - **API Documentation**: http://localhost:8005/docs
 - **Streamlit UI**: http://localhost:8501
-- **OpenRouter Chat Playground**: within the Streamlit UI (sidebar → "💬 OpenRouter Chat Playground")
+- **LLM Chat Playground**: within the Streamlit UI (sidebar → "💬 LLM Chat Playground")
 - **MCP Server**: http://localhost:8001
 - **Health Check**: http://localhost:8005/health
 
@@ -209,7 +216,7 @@ curl -X POST "http://localhost:8005/process-menu" \
 4. See classified vegetarian dishes
 5. Review confidence scores and reasoning
 6. Get total price calculation
-7. Switch to the "💬 OpenRouter Chat Playground" page to test and compare LLM responses
+7. Switch to the "💬 LLM Chat Playground" page to test and compare Groq/OpenRouter responses
 
 ## Features
 
@@ -234,7 +241,7 @@ curl -X POST "http://localhost:8005/process-menu" \
 - Service-to-service communication
 
 ### Phase 5: LLM Classification (Planned)
-- Intelligent classification with GPT-4o-mini
+- Intelligent classification with Groq `openai/gpt-oss-20b`
 - Confidence scoring
 - Cost tracking
 

@@ -23,17 +23,17 @@ class MenuProcessorAgent:
     def __init__(
         self,
         *,
-        openrouter_client,
+        llm_client,
         mcp_client: Optional[MCPClient] = None,
         rag_service: Optional[RAGService] = None,
         rag_node: Optional[RAGNode] = None,
         confidence_threshold: Optional[float] = None,
     ) -> None:
-        if openrouter_client is None:
-            raise ValueError("openrouter_client is required for the LangGraph agent.")
+        if llm_client is None:
+            raise ValueError("llm_client is required for the LangGraph agent.")
 
         self.confidence_threshold = confidence_threshold or settings.confidence_threshold
-        self.openrouter_client = openrouter_client
+        self.llm_client = llm_client
         self.mcp_client = mcp_client or get_mcp_client()
         self.rag_service = rag_service
         if rag_node is not None:
@@ -43,10 +43,7 @@ class MenuProcessorAgent:
                 self.rag_service = RAGService()
             self.rag_node = RAGNode(self.rag_service, top_k=settings.rag_top_k)
 
-        classifier_node = ClassifierNode(
-            openrouter_client,
-            confidence_threshold=self.confidence_threshold,
-        )
+        classifier_node = ClassifierNode(llm_client, confidence_threshold=self.confidence_threshold)
         calculator_node = CalculatorNode(
             self.mcp_client,
             confidence_threshold=self.confidence_threshold,

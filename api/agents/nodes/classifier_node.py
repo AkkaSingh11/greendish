@@ -1,14 +1,15 @@
-"""Classifier node that uses the OpenRouter client to classify dishes."""
+"""Classifier node that uses the configured LLM client to classify dishes."""
 
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional, Sequence, Mapping, Protocol, Union
+from typing import Any, Dict, Optional, Sequence, Union
 
 from pydantic import BaseModel, Field
 
 from config import settings
-from llm.openrouter_client import OpenRouterResponse
+from llm import OpenRouterResponse
+from llm.types import SupportsJSONCompletion
 from models import ClassificationResult, Dish
 from ..state import (
     MenuProcessorState,
@@ -21,21 +22,6 @@ from ..state import (
 from ..utils import normalize_signals
 
 logger = logging.getLogger(__name__)
-
-
-class SupportsJSONCompletion(Protocol):
-    """Protocol allowing tests to stub the OpenRouter client."""
-
-    async def complete_json(
-        self,
-        prompt: str,
-        *,
-        schema: Optional[type[BaseModel]] = None,
-        model: Optional[str] = None,
-        temperature: float = 0.0,
-        max_tokens: Optional[int] = None,
-        extra_messages: Optional[Sequence[Mapping[str, str]]] = None,
-    ) -> OpenRouterResponse: ...
 
 
 class ClassificationPayload(BaseModel):
@@ -73,7 +59,7 @@ class ClassifierNode:
             return {}
 
         prompt = self._build_prompt(dish, state)
-        logger.debug("Classifying dish '%s' via OpenRouter.", dish.name)
+        logger.debug("Classifying dish '%s' via LLM provider.", dish.name)
         response = await self.client.complete_json(
             prompt,
             schema=ClassificationPayload,

@@ -1,4 +1,4 @@
-"""Batch classifier that asks OpenRouter to label multiple dishes at once."""
+"""Batch classifier that asks the configured LLM provider to label dishes in a single call."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass
 from typing import Any, List, Sequence
 
-from llm.openrouter_client import OpenRouterClient
+from llm.types import SupportsJSONCompletion
 from models import Dish
 
 from agents.utils import SignalsInput, normalize_signals
@@ -27,7 +27,7 @@ class BatchClassificationItem:
 class LLMBatchClassifier:
     """Classifies a menu-worth of dishes with a single LLM request."""
 
-    def __init__(self, client: OpenRouterClient) -> None:
+    def __init__(self, client: SupportsJSONCompletion) -> None:
         self.client = client
 
     async def classify(self, dishes: Sequence[Dish], *, request_id: str) -> List[BatchClassificationItem]:

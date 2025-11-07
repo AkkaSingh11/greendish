@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ConvergeFi is a microservices-based Restaurant Menu Vegetarian Dish Analyzer that processes menu photos to identify and calculate total prices of vegetarian dishes. The system uses:
 - **OCR** (Tesseract) for text extraction
 - **Structured parsing** that emits canonical `{name, price, raw_text}` JSON for each dish
-- **LLM classification** via OpenRouter (current default `deepseek/deepseek-chat-v3.1`, optional fallback), surfaced through the shared `api.llm.OpenRouterClient`
+- **LLM classification** via Groq (`openai/gpt-oss-20b` default) with OpenRouter fallback, surfaced through the shared `api.llm` router utilities
 - **LangGraph menu-processor agent** to orchestrate dish classification, RAG fallback, and MCP tool usage
 - **RAG** (ChromaDB + sentence-transformers) for confidence bolstering when classification is uncertain
 - **MCP (Model Context Protocol)** server for deterministic price calculation logic
@@ -28,7 +28,7 @@ The system is split into three microservices that communicate over HTTP:
 
 3. **Streamlit UI** (`/streamlit-ui`) - Testing interface
    - Multi-page app for testing each phase
-   - Includes an “💬 OpenRouter Chat Playground” page to sanity-check LLM prompts against primary/fallback models
+   - Includes an “💬 LLM Chat Playground” page to compare Groq (primary) vs. OpenRouter (fallback) prompts
    - Mirrors API outputs, including the structured `parsed_menu` JSON for verification
 
 ## Import Structure
@@ -92,8 +92,8 @@ uv add package-name
 
 ## LLM Client Module
 
-- Shared OpenRouter integration lives in `api/llm/openrouter_client.py` and is re-exported via `api/llm/__init__.py`.
-- Within the API service, import using relative paths (`from llm import OpenRouterClient`). From external services (Streamlit), use `from api.llm import OpenRouterClient` after ensuring the repo root is on `sys.path`.
+- Shared LLM router components live in `api/llm/` (`groq_client.py`, `openrouter_client.py`, and `router_client.py`) and are re-exported via `api/llm/__init__.py`.
+- Within the API service, import using relative paths (`from llm import GroqClient, LLMRouter`). From external services (Streamlit), use `from api.llm import GroqClient` (or `OpenRouterClient`) after ensuring the repo root is on `sys.path`.
 - `complete_json(...)` enforces schema-validated responses for classification nodes; `chat(...)` streams plain text output for playgrounds.
 - The client automatically falls back from the primary model to the configured secondary model and returns token/latency telemetry for observability.
 
@@ -201,7 +201,7 @@ This project is being built in **10 phases**. See `PHASE_WISE_PLAN.MD` for the c
 ### Key Phase Dependencies
 - **Phase 1-3**: API service only (no MCP server needed)
 - **Phase 4+**: MCP server required
-- **Phase 5+**: OpenRouter API key required
+- **Phase 5+**: Groq API key preferred (falls back to OpenRouter API key if provided)
 - **Phase 6+**: ChromaDB integration required
 - **Phase 7+**: LangSmith API key required
 
@@ -289,7 +289,7 @@ Use `test_ocr.py` for quick validation that OCR is working. Full pytest suite wi
 
 When implementing LLM classification:
 1. Always implement keyword fallback first (Phase 3)
-2. Route requests through OpenRouter using `deepseek/deepseek-chat-v3.1` as the default model (optional fallback configurable via env / Streamlit UI)
+2. Route requests through Groq using `openai/gpt-oss-20b` as the default model, falling back to OpenRouter (`deepseek/deepseek-chat-v3.1`) when configured via env / Streamlit UI
 3. LLM responses must be strict JSON: `{is_vegetarian: bool, confidence: float, reasoning: str}`
 4. Use LangGraph state to decide when to trigger RAG lookups and re-classify
 5. Track token usage and costs via LangSmith

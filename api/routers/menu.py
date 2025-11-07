@@ -16,7 +16,7 @@ from models import (
     MCPToolInfo,
 )
 from agents import MenuProcessorAgent
-from llm.openrouter_client import OpenRouterClient, OpenRouterError
+from llm import GroqClient, LLMRouter, OpenRouterClient, OpenRouterError
 from services import (
     OCRService,
     KeywordClassifier,
@@ -51,32 +51,53 @@ if settings.keyword_mode_enabled:
         logger.warning("Keyword classifier unavailable: %s", exc)
 
 mcp_client: Optional[MCPClient] = get_mcp_client()
-openrouter_client: Optional[OpenRouterClient] = None
+llm_client: Optional[LLMRouter] = None
 ai_agent: Optional[MenuProcessorAgent] = None
 batch_classifier: Optional[LLMBatchClassifier] = None
 
 
-def get_openrouter_client() -> OpenRouterClient:
-    """Return a shared OpenRouter client instance."""
-    global openrouter_client
+def get_llm_client() -> LLMRouter:
+    """Return a shared LLM router that prefers Groq and falls back to OpenRouter."""
+    global llm_client
 
-    if not settings.openrouter_api_key:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="OPENROUTER_API_KEY is not configured. AI processing mode is unavailable.",
-        )
+    if llm_client is not None:
+        return llm_client
 
-    if openrouter_client is None:
+    groq_instance: Optional[GroqClient] = None
+    openrouter_instance: Optional[OpenRouterClient] = None
+    errors: list[str] = []
+
+    if settings.groq_api_key:
         try:
-            openrouter_client = OpenRouterClient()
+            groq_instance = GroqClient()
+        except OpenRouterError as exc:
+            logger.error("Failed to initialize Groq client: %s", exc)
+            errors.append(f"Groq: {exc}")
+
+    if settings.openrouter_api_key:
+        try:
+            openrouter_instance = OpenRouterClient()
         except OpenRouterError as exc:
             logger.error("Failed to initialize OpenRouter client: %s", exc)
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Failed to initialize OpenRouter client. Check API key and configuration.",
-            ) from exc
+            errors.append(f"OpenRouter: {exc}")
 
-    return openrouter_client
+    if groq_instance is None and openrouter_instance is None:
+        detail = (
+            "LLM provider unavailable. Configure GROQ_API_KEY for Groq or OPENROUTER_API_KEY as a fallback."
+        )
+        if errors:
+            detail += " Errors: " + " | ".join(errors)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=detail)
+
+    provider_labels = []
+    if groq_instance:
+        provider_labels.append("Groq")
+    if openrouter_instance:
+        provider_labels.append("OpenRouter")
+
+    llm_client = LLMRouter(groq_client=groq_instance, openrouter_client=openrouter_instance)
+    logger.info("Initialized LLM router with providers: %s", ", ".join(provider_labels))
+    return llm_client
 
 
 def get_ai_agent() -> MenuProcessorAgent:
@@ -86,9 +107,9 @@ def get_ai_agent() -> MenuProcessorAgent:
     if ai_agent is not None:
         return ai_agent
 
-    client = get_openrouter_client()
+    client = get_llm_client()
     ai_agent = MenuProcessorAgent(
-        openrouter_client=client,
+        llm_client=client,
         mcp_client=mcp_client,
     )
     return ai_agent
@@ -98,7 +119,7 @@ def get_batch_classifier() -> LLMBatchClassifier:
     """Return a shared batch classifier instance."""
     global batch_classifier
     if batch_classifier is None:
-        client = get_openrouter_client()
+        client = get_llm_client()
         batch_classifier = LLMBatchClassifier(client)
     return batch_classifier
 
@@ -316,7 +337,7 @@ async def process_menu(
         try:
             batch_items = await classifier.classify(all_dishes, request_id=request_id)
         except OpenRouterError as exc:
-            logger.error("OpenRouter request failed for %s: %s", request_id, exc)
+            logger.error("LLM provider request failed for %s: %s", request_id, exc)
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=f"AI classification failed due to LLM provider error: {exc}",
@@ -359,7 +380,7 @@ async def process_menu(
             try:
                 agent_state = await agent.run(uncertain_inputs, request_id=request_id, mode=normalized_mode)
             except OpenRouterError as exc:
-                logger.error("OpenRouter request failed for %s: %s", request_id, exc)
+                logger.error("LLM provider request failed for %s: %s", request_id, exc)
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
                     detail=f"AI classification failed due to LLM provider error: {exc}",

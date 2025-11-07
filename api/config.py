@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     openrouter_app_name: str = "ConvergeFi-Menu Analyzer"
     openrouter_referer: Optional[str] = None
 
+    # Groq Settings
+    groq_api_key: Optional[str] = None
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+    groq_primary_model: str = "openai/gpt-oss-20b"
+    groq_request_timeout: int = 30
+
     # Logging Settings
     logs_dir: str = str(BASE_DIR.parent / "logs")
 

@@ -13,12 +13,12 @@ if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
 from api.agents import MenuProcessorAgent  # noqa: E402
-from api.llm.openrouter_client import OpenRouterResponse  # noqa: E402
+from api.llm import OpenRouterResponse  # noqa: E402
 from models import CalculationSummary, Dish  # noqa: E402
 
 
-class StubOpenRouterClient:
-    """Deterministic OpenRouter stub for unit tests."""
+class StubLLMClient:
+    """Deterministic LLM stub for unit tests."""
 
     def __init__(self, responses: Sequence[Dict[str, Any]], model: str = "stub-model") -> None:
         self._responses = list(responses)
@@ -101,7 +101,7 @@ async def test_agent_classifies_dishes_and_calculates_total() -> None:
         Dish(name="Chicken Wings", price=9.0, raw_text="Chicken Wings - $9.00"),
     ]
 
-    openrouter_stub = StubOpenRouterClient(
+    llm_stub = StubLLMClient(
         responses=[
             {"is_vegetarian": True, "confidence": 0.92, "reasoning": "Classic vegetarian pizza."},
             {"is_vegetarian": False, "confidence": 0.95, "reasoning": "Contains chicken."},
@@ -109,11 +109,7 @@ async def test_agent_classifies_dishes_and_calculates_total() -> None:
     )
     mcp_stub = StubMCPClient()
 
-    agent = MenuProcessorAgent(
-        openrouter_client=openrouter_stub,
-        mcp_client=mcp_stub,
-        rag_node=NoopRAGNode(),
-    )
+    agent = MenuProcessorAgent(llm_client=llm_stub, mcp_client=mcp_stub, rag_node=NoopRAGNode())
     state = await agent.run(dishes, request_id="test-run-1")
 
     assert len(state["classified_dishes"]) == 2
@@ -138,7 +134,7 @@ async def test_agent_triggers_rag_route_on_low_confidence() -> None:
         Dish(name="Mystery Soup", price=None, raw_text="Soup of the day"),
     ]
 
-    openrouter_stub = StubOpenRouterClient(
+    llm_stub = StubLLMClient(
         responses=[
             {"is_vegetarian": False, "confidence": 0.2, "reasoning": "Insufficient information."},
             {"is_vegetarian": True, "confidence": 0.75, "reasoning": "Soup described as vegetable-based."},
@@ -146,7 +142,7 @@ async def test_agent_triggers_rag_route_on_low_confidence() -> None:
     )
     rag_stub = RecordingRAGNode()
 
-    agent = MenuProcessorAgent(openrouter_client=openrouter_stub, rag_node=rag_stub)
+    agent = MenuProcessorAgent(llm_client=llm_stub, rag_node=rag_stub)
     state = await agent.run(dishes, request_id="test-run-2")
 
     assert rag_stub.calls == 1
@@ -154,5 +150,5 @@ async def test_agent_triggers_rag_route_on_low_confidence() -> None:
     assert state["classified_dishes"][0].is_vegetarian is True
     assert state["rag_context"] is None  # Cleared after reclassification
     assert state["rag_lookups"][-1]["source"] == "stub"
-    assert len(openrouter_stub.calls) == 2
+    assert len(llm_stub.calls) == 2
     assert "Mystery Soup" in state["confidence_scores"]
