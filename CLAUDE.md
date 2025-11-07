@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ConvergeFi is a microservices-based Restaurant Menu Vegetarian Dish Analyzer that processes menu photos to identify and calculate total prices of vegetarian dishes. The system uses:
+GreenDish (formerly ConvergeFi) is a microservices-based Restaurant Menu Vegetarian Dish Analyzer that processes menu photos to identify and calculate total prices of vegetarian dishes. The system uses:
 - **OCR** (Tesseract) for text extraction
 - **Structured parsing** that emits canonical `{name, price, raw_text}` JSON for each dish
 - **LLM classification** via Groq (`openai/gpt-oss-20b` default) with OpenRouter fallback, surfaced through the shared `api.llm` router utilities
@@ -12,6 +12,8 @@ ConvergeFi is a microservices-based Restaurant Menu Vegetarian Dish Analyzer tha
 - **RAG** (ChromaDB + sentence-transformers) for confidence bolstering when classification is uncertain
 - **MCP (Model Context Protocol)** server for deterministic price calculation logic
 - **LangSmith** for observability
+
+**Current Status**: Phase 9+ Complete - All core features implemented and tested
 
 ## Architecture
 
@@ -148,7 +150,7 @@ docker-compose logs -f streamlit
 
 ```bash
 # Quick OCR test with sample menus
-python test_ocr.py
+python scripts/test_ocr.py
 
 # Run pytest suite (Phase 9+)
 pytest tests/
@@ -189,14 +191,21 @@ Key settings:
 
 ## Phased Development
 
-This project is being built in **10 phases**. See `PHASE_WISE_PLAN.MD` for the complete roadmap.
+This project was built in **10 phases**. See [docs/phases/PHASE_WISE_PLAN.MD](docs/phases/PHASE_WISE_PLAN.MD) for the complete roadmap.
 
 ### Completed Phases
 - ✅ **Phase 0**: Git initialization, project structure
 - ✅ **Phase 1**: OCR implementation with FastAPI and Streamlit
+- ✅ **Phase 2**: Text parsing and dish structuring
+- ✅ **Phase 3**: Keyword-based vegetarian classification
+- ✅ **Phase 4**: MCP server integration
+- ✅ **Phase 5**: LLM classification (Groq + OpenRouter)
+- ✅ **Phase 6**: RAG implementation with ChromaDB
+- ✅ **Phase 7-8**: LangGraph agent orchestration + observability
+- ✅ **Phase 9**: Comprehensive testing suite
 
 ### Current Phase
-- 🔄 **Phase 2**: Text parsing and dish structuring
+- ✅ **Phase 9+**: Complete - All core features implemented
 
 ### Key Phase Dependencies
 - **Phase 1-3**: API service only (no MCP server needed)
@@ -277,13 +286,13 @@ Each page should be self-contained and demonstrate the capabilities added in tha
 
 ## Testing Strategy
 
-Sample menu images are provided in `ocr_test_images/`:
+Sample menu images are provided in `tests/fixtures/images/`:
 - `menu1.jpeg` - Applebee's menu (complex, multi-column)
 - `menu2.png` - Simple menu with prices
 - `menu3.webp` - Cafe menu with descriptions
 - `image_4.webp`, `image_6.png` - Additional menus for parser regression tests
 
-Use `test_ocr.py` for quick validation that OCR is working. Full pytest suite will be added in Phase 9.
+Use `scripts/test_ocr.py` for quick validation that OCR is working. Full pytest suite is available in Phase 9+.
 
 ## LLM Classification (Phase 5)
 
