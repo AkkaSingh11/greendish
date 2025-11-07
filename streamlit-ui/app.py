@@ -257,8 +257,8 @@ def main():
                     # Make API request
                     start_time = time.time()
                     params = {"mode": selected_mode}
-                        if ai_mode_selected:
-                            params["use_rag"] = use_rag
+                    if ai_mode_selected:
+                        params["use_rag"] = use_rag
                     response = requests.post(
                         config.API_PROCESS_MENU_ENDPOINT,
                         files=files,

@@ -306,6 +306,7 @@ async def process_menu(
     vegetarian_dishes: List[Dish] = []
     calculation_summary: Optional[CalculationSummary] = None
     total_price = 0.0
+    agent_trace_url: Optional[str] = None
 
     effective_rag = settings.rag_enabled if use_rag is None else use_rag
 
@@ -372,6 +373,7 @@ async def process_menu(
                     detail="AI processing pipeline encountered an unexpected error.",
                 ) from exc
 
+            agent_trace_url = agent_state.get("trace_url")
             classified_subset = agent_state.get("classified_dishes", [])
             for offset, idx in enumerate(uncertain_indices):
                 if offset >= len(classified_subset):
@@ -438,7 +440,7 @@ async def process_menu(
         vegetarian_dishes=vegetarian_dishes,
         total_price=total_price,
         processing_time_ms=processing_time,
-        langsmith_trace_url=agent_state.get("trace_url") if normalized_mode == "ai" else None,
+        langsmith_trace_url=agent_trace_url if normalized_mode == "ai" else None,
         calculation_summary=calculation_summary,
         mode=normalized_mode,
     )

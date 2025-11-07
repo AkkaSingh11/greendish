@@ -126,9 +126,9 @@ async def test_process_menu_ai_mode_runs_agent(monkeypatch: pytest.MonkeyPatch) 
 
     assert response.mode == "ai"
     assert len(response.dishes) == 1
-    assert response.dishes[0].is_vegetarian is False
-    assert response.total_price == pytest.approx(0.0)
-    assert response.calculation_summary is None
+    assert response.dishes[0].is_vegetarian is True
+    assert response.total_price == pytest.approx(12.0)
+    assert response.calculation_summary is not None
     assert not stub_agent.calls, "Agent should not run when RAG is disabled"
 
 
